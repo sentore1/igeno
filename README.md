@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Care & Igeno Platform
+
+A modular web platform with two main divisions:
+
+## Division A – Care & Family Wellness
+Complete care management system with client registration, booking, caregiver assignment, scheduling, and reporting.
+
+## Division B – Igeno Gate Academy
+Learning Management System (LMS) with courses, videos, quizzes, certificates, and career resources.
+
+## Features
+- Single Sign-On (SSO) with unified authentication
+- Role-based access control (Admin, Trainer, Student, Caregiver, Nurse, Consultant, Client)
+- Secure online payments
+- Email and in-app notifications
+- Reporting and analytics
+- Responsive design
+
+## Tech Stack
+- **Framework**: Next.js 16 with App Router
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Styling**: Tailwind CSS
+- **Language**: TypeScript
 
 ## Getting Started
 
-First, run the development server:
-
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Set Up Environment Variables
+Copy `.env.example` to `.env.local` and add your Supabase credentials:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Set Up Database
+Run the SQL schema in your Supabase project:
+```bash
+# Copy contents of supabase-schema.sql to Supabase SQL Editor and execute
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Run Development Server
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
+```
+├── app/
+│   ├── (auth)/              # Authentication pages
+│   ├── (care)/              # Division A - Care Management
+│   ├── (academy)/           # Division B - LMS
+│   ├── dashboard/           # User dashboards
+│   └── api/                 # API routes
+├── components/              # Reusable components
+├── lib/                     # Utilities and configurations
+└── public/                  # Static assets
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## User Roles
+- **Admin**: Full system access
+- **Trainer**: Manage courses and students
+- **Student**: Access courses and learning materials
+- **Caregiver**: Manage appointments and client care
+- **Nurse**: Healthcare services
+- **Consultant**: Provide consultancy services
+- **Client**: Book care services
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Development
+```bash
+# Development
+npm run dev
 
-## Deploy on Vercel
+# Build
+npm run build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Start production
+npm start
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Lint
+npm run lint
+```
