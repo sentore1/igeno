@@ -205,7 +205,7 @@ export default function PaymentSettingsPage() {
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="text-4xl">📱</div>
+          <div className="text-4xl"></div>
           <div>
             <h2 className="text-2xl font-bold">Mobile Money (MoMo)</h2>
             <p className="text-gray-600">Configure MoMo payment settings for service bookings</p>
@@ -238,8 +238,8 @@ export default function PaymentSettingsPage() {
             />
           </div>
 
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-yellow-900 mb-2">⚠️ Choose Payment Method</h4>
+          <div className="bg-blue-122 border-yellow-300 rounded-lg p-4 mb-6">
+            <h4 className="font-semibold text-blue mb-2"> Choose Payment Method</h4>
             <p className="text-sm text-yellow-800 mb-3">
               Select <strong>ONE</strong> payment method below. If both are provided, <strong>MoMo Code will be used</strong> for the QR code.
             </p>
@@ -305,17 +305,17 @@ export default function PaymentSettingsPage() {
 
           <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-6">
             <div className="flex items-start gap-3">
-              <div className="text-3xl">📱</div>
+              <div className="text-3xl"></div>
               <div>
-                <h4 className="font-bold text-green-800 mb-2">🎯 QR Code + USSD Payment</h4>
+                <h4 className="font-bold text-green-800 mb-2">QR Code + USSD Payment</h4>
                 <p className="text-sm text-green-700 mb-2">
                   <strong>Best of both worlds!</strong> System generates QR codes AND shows USSD codes for maximum convenience.
                 </p>
                 <ul className="text-xs text-green-600 space-y-1">
-                  <li>✅ QR Code: Scan to auto-dial payment code (tel:*182*8*1*...)</li>
-                  <li>✅ USSD Code: Manual dial option displayed clearly</li>
-                  <li>💡 Dynamic amounts generated per booking</li>
-                  <li>🔒 Standard MTN Mobile Money format</li>
+                  <li>QR Code: Scan to auto-dial payment code (tel:*182*8*1*...)</li>
+                  <li> USSD Code: Manual dial option displayed clearly</li>
+                  <li> Dynamic amounts generated per booking</li>
+                  <li> Standard MTN Mobile Money format</li>
                 </ul>
               </div>
             </div>
@@ -334,17 +334,6 @@ export default function PaymentSettingsPage() {
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="font-semibold text-blue-800 mb-2">💡 How it works:</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• System generates QR code and USSD code for each booking</li>
-              <li>• Customer can scan QR to auto-dial: tel:*182*8*1*recipient*amount#</li>
-              <li>• Or manually dial the displayed USSD code</li>
-              <li>• Amount is included - customer just confirms payment</li>
-              <li>• Customer uploads screenshot/proof of payment</li>
-              <li>• Admin verifies payment and confirms booking</li>
-            </ul>
-          </div>
 
           <div className="flex gap-4">
             <button
@@ -402,7 +391,7 @@ export default function PaymentSettingsPage() {
 
             {/* USSD Code Display */}
             <div className="bg-gradient-to-br from-orange-50 to-yellow-50 border-2 border-orange-300 rounded-lg p-6 mb-4">
-              <p className="font-bold text-orange-800 mb-3 text-center">📱 Or dial this code:</p>
+              <p className="font-bold text-orange-800 mb-3 text-center"> Or dial this code:</p>
               
               {momoSettings?.settings.momo_code ? (
                 <div className="bg-white rounded-lg p-3">
