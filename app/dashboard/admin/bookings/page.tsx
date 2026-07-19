@@ -22,6 +22,8 @@ export default function BookingsManagement() {
   const [filter, setFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
+  const [proofLoading, setProofLoading] = useState(false);
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -158,6 +160,58 @@ export default function BookingsManagement() {
     loadBookings();
   };
 
+  const viewPaymentProof = async (proofUrl: string) => {
+    setProofLoading(true);
+    setProofImageUrl('loading');
+
+    try {
+      // Extract the file path from the URL
+      // URL format: .../storage/v1/object/public/payment-proofs/USER_ID/payment-TIMESTAMP.ext
+      // or: .../storage/v1/object/sign/payment-proofs/...
+      const bucketName = 'payment-proofs';
+      const marker = `/${bucketName}/`;
+      const idx = proofUrl.indexOf(marker);
+
+      if (idx === -1) {
+        // URL doesn't contain bucket path — just open directly
+        setProofImageUrl(proofUrl);
+        setProofLoading(false);
+        return;
+      }
+
+      const filePath = proofUrl.substring(idx + marker.length);
+
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+
+      if (error || !data?.signedUrl) {
+        // Fallback: try opening the original URL directly
+        setProofImageUrl(proofUrl);
+      } else {
+        setProofImageUrl(data.signedUrl);
+      }
+    } catch {
+      setProofImageUrl(proofUrl);
+    } finally {
+      setProofLoading(false);
+    }
+  };
+
+  const updatePaymentStatus = async (bookingId: string, newPaymentStatus: string) => {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ payment_status: newPaymentStatus })
+      .eq('id', bookingId);
+
+    if (error) {
+      alert('Failed to update payment status');
+      return;
+    }
+
+    loadBookings();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -177,6 +231,44 @@ export default function BookingsManagement() {
           Back to Admin Dashboard
         </Link>
       </div>
+
+      {/* Payment Proof Modal */}
+      {proofImageUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setProofImageUrl(null)}>
+          <div className="bg-white rounded-lg max-w-2xl w-full p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Payment Proof</h2>
+              <button onClick={() => setProofImageUrl(null)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            {proofImageUrl === 'loading' ? (
+              <div className="flex justify-center items-center h-48">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <>
+                <img
+                  src={proofImageUrl}
+                  alt="Payment Proof"
+                  className="w-full max-h-[70vh] object-contain rounded"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="hidden text-center py-8 text-red-500">
+                  <p>Could not load image.</p>
+                  <a href={proofImageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">Try opening directly</a>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <a href={proofImageUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                    Open Full Size
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Assign Caregiver Modal */}
       {showAssignModal && selectedBooking && (
@@ -309,6 +401,9 @@ export default function BookingsManagement() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -355,6 +450,46 @@ export default function BookingsManagement() {
                     <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full capitalize ${getStatusColor(booking.status)}`}>
                       {booking.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {booking.payment_proof_url ? (
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => viewPaymentProof(booking.payment_proof_url)}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-900 text-sm font-medium"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          View Proof
+                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => updatePaymentStatus(booking.id, 'verified')}
+                            className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded hover:bg-green-200"
+                          >
+                            ✓ Verify
+                          </button>
+                          <button
+                            onClick={() => updatePaymentStatus(booking.id, 'rejected')}
+                            className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded hover:bg-red-200"
+                          >
+                            ✗ Reject
+                          </button>
+                        </div>
+                        {booking.payment_status && (
+                          <span className={`text-xs font-semibold ${
+                            booking.payment_status === 'verified' ? 'text-green-600' :
+                            booking.payment_status === 'rejected' ? 'text-red-600' :
+                            'text-yellow-600'
+                          }`}>
+                            {booking.payment_status}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No proof</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <select

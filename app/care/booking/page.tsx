@@ -324,7 +324,7 @@ export default function BookingPage() {
           {momoSettings && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mt-4">
               <p className="text-sm text-yellow-800">
-                <strong>⏳ Payment Verification Pending</strong>
+                <strong>Payment Verification Pending</strong>
                 <br />
                 Your payment proof has been submitted. An admin will verify it shortly.
                 <br />
@@ -537,8 +537,8 @@ export default function BookingPage() {
             ) : null}
 
             {/* USSD Payment Code Display */}
-            <div className="bg-gradient-to-br from-orange-50 to-yellow-50 border-2 border-orange-300 rounded-lg p-6">
-              <p className="font-bold text-orange-800 mb-4 text-center text-lg">
+            <div className="rounded-lg p-6" style={{ backgroundColor: '#694EAB' }}>
+              <p className="font-bold text-white mb-4 text-center text-lg">
                 {dynamicQRCode ? ' Or dial this code manually:' : '📱 Dial this code from your phone:'}
               </p>
               
@@ -583,12 +583,6 @@ export default function BookingPage() {
                 </>
               ) : null}
               <p className="text-sm text-gray-500 mt-2">Amount: RWF {calculatedAmount.toFixed(2)}</p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                {momoSettings.settings.instructions}
-              </p>
             </div>
 
             <div>
