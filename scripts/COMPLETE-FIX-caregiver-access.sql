@@ -13,7 +13,7 @@ SELECT 'Current clients policies:' as info;
 SELECT policyname FROM pg_policies WHERE tablename = 'clients';
 
 -- ============================================
--- STEP 2: Fix BOOKINGS table policies
+-- STEP 2: Fix BOOKINGS table policiesaaaa
 -- ============================================
 
 -- Drop existing booking policies that might be blocking access

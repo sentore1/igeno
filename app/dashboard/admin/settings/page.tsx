@@ -25,7 +25,7 @@ export default function SystemSettings() {
     requireEmailVerification: true,
     maxBookingsPerUser: 10,
     bookingAdvanceNoticeDays: 2,
-    defaultCurrency: 'USD',
+    defaultCurrency: 'RWF',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -154,6 +154,7 @@ export default function SystemSettings() {
                 value={settings.defaultCurrency}
                 onChange={(e) => setSettings({ ...settings, defaultCurrency: e.target.value })}
               >
+                <option value="RWF">RWF - Rwandan Franc</option>
                 <option value="USD">USD - US Dollar</option>
                 <option value="EUR">EUR - Euro</option>
                 <option value="GBP">GBP - British Pound</option>

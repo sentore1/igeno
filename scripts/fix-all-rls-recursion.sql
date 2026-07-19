@@ -4,7 +4,7 @@
 -- ============================================
 -- PROBLEM: Circular dependencies in RLS policies
 -- ============================================
--- 1. Clients table queries bookings table
+-- 1. Clients table queriesaa bookings table
 -- 2. Bookings table queries clients table
 -- 3. This creates infinite recursion
 
