@@ -93,7 +93,10 @@ export default function Dashboard() {
           return;
         }
         
-        alert(`Error loading profile: ${profileError?.message || 'Unknown error'}\nCode: ${profileError?.code}\nCheck console for details.`);
+        // Handle other profile errors
+        const errorMessage = String((profileError as any)?.message || 'Unknown error');
+        const errorCode = String((profileError as any)?.code || 'N/A');
+        alert(`Error loading profile: ${errorMessage}\nCode: ${errorCode}\nCheck console for details.`);
         setLoading(false);
         return;
       }

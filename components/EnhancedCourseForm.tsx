@@ -11,8 +11,8 @@ interface EnhancedCourseFormProps {
   setResources: (resources: any[]) => void;
   quizzes: any[];
   setQuizzes: (quizzes: any[]) => void;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeTab: 'details' | 'resources' | 'quizzes';
+  setActiveTab: (tab: 'details' | 'resources' | 'quizzes') => void;
 }
 
 export default function EnhancedCourseForm({
