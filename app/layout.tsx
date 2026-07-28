@@ -9,6 +9,7 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 export const metadata: Metadata = {
   title: "Care & Igeno Platform",
   description: "Integrated Care Management and Learning Platform",
+  icons: { icon: "/favlogo.png" },
 };
 
 export default function RootLayout({

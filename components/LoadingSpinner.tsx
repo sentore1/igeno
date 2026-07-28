@@ -1,13 +1,15 @@
 export default function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = {
-    sm: 'h-6 w-6',
-    md: 'h-12 w-12',
-    lg: 'h-16 w-16'
-  };
+  const dotSize = size === 'sm' ? 'h-2 w-2' : size === 'lg' ? 'h-4 w-4' : 'h-3 w-3';
 
   return (
-    <div className="flex items-center justify-center">
-      <div className={`animate-spin rounded-full border-b-2 border-blue-600 ${sizes[size]}`}></div>
+    <div className="flex items-center justify-center gap-2">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className={`${dotSize} rounded-full bg-blue-600 animate-bounce`}
+          style={{ animationDelay: `${i * 0.15}s` }}
+        />
+      ))}
     </div>
   );
 }

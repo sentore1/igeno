@@ -38,6 +38,9 @@ interface PaymentSettings {
     momo_code?: string;
     account_name?: string;
     instructions?: string;
+    bank_name?: string;
+    bank_account_name?: string;
+    bank_account_number?: string;
   };
 }
 
@@ -57,6 +60,7 @@ export default function BookingPage() {
   const [success, setSuccess] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [momoSettings, setMomoSettings] = useState<PaymentSettings | null>(null);
+  const [bankSettings, setBankSettings] = useState<PaymentSettings | null>(null);
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState<string>('');
   const [calculatedAmount, setCalculatedAmount] = useState<number>(0);
@@ -141,16 +145,21 @@ export default function BookingPage() {
   };
 
   const loadPaymentSettings = async () => {
-    const { data } = await supabase
+    const { data: momoData } = await supabase
       .from('payment_settings')
       .select('*')
       .eq('payment_method', 'momo')
       .eq('is_active', true)
       .single();
+    if (momoData) setMomoSettings(momoData);
 
-    if (data) {
-      setMomoSettings(data);
-    }
+    const { data: bankData } = await supabase
+      .from('payment_settings')
+      .select('*')
+      .eq('payment_method', 'bank')
+      .eq('is_active', true)
+      .single();
+    if (bankData) setBankSettings(bankData);
   };
 
   const calculateAmount = () => {
@@ -385,10 +394,10 @@ export default function BookingPage() {
                   <div
                     key={service.id}
                     onClick={() => handleServiceChange(service.id)}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                    className={`rounded-lg p-4 cursor-pointer transition shadow-md ${
                       serviceType === service.id
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300'
+                        ? 'bg-blue-50 shadow-lg'
+                        : 'hover:shadow-lg'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -568,6 +577,17 @@ export default function BookingPage() {
                 </div>
               )}
             </div>
+
+            {/* Bank Transfer Section */}
+            {bankSettings && (
+              <div className="rounded-lg p-6" style={{ backgroundColor: '#009292' }}>
+                <p className="text-sm font-semibold text-white mb-3">Or pay via Bank Transfer:</p>
+                <p className="text-xl font-bold text-white mb-1">{bankSettings.settings.bank_name}</p>
+                <p className="text-white opacity-90">{bankSettings.settings.bank_account_name}</p>
+                <p className="text-white opacity-90">Account No: <span className="font-mono font-semibold">{bankSettings.settings.bank_account_number}</span></p>
+                <p className="text-white opacity-75 mt-2 text-sm">Amount: RWF {calculatedAmount.toFixed(2)}</p>
+              </div>
+            )}
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
               <p className="text-sm text-gray-600 mb-2">Payment Details:</p>

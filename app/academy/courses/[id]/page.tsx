@@ -179,10 +179,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
             
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2"></h3>
-              <p className="text-sm text-blue-700">Video lessons, downloadable resources, practice quizzes, and certificates are currently in development and will be added in future updates.</p>
-            </div>
+
           </div>
 
           {/* Course Description */}

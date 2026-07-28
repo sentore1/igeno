@@ -165,32 +165,14 @@ export default function BookingsManagement() {
     setProofImageUrl('loading');
 
     try {
-      // Extract the file path from the URL
-      // URL format: .../storage/v1/object/public/payment-proofs/USER_ID/payment-TIMESTAMP.ext
-      // or: .../storage/v1/object/sign/payment-proofs/...
-      const bucketName = 'payment-proofs';
-      const marker = `/${bucketName}/`;
-      const idx = proofUrl.indexOf(marker);
+      const res = await fetch('/api/payment-proof-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proofUrl }),
+      });
 
-      if (idx === -1) {
-        // URL doesn't contain bucket path — just open directly
-        setProofImageUrl(proofUrl);
-        setProofLoading(false);
-        return;
-      }
-
-      const filePath = proofUrl.substring(idx + marker.length);
-
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-
-      if (error || !data?.signedUrl) {
-        // Fallback: try opening the original URL directly
-        setProofImageUrl(proofUrl);
-      } else {
-        setProofImageUrl(data.signedUrl);
-      }
+      const data = await res.json();
+      setProofImageUrl(data.signedUrl || proofUrl);
     } catch {
       setProofImageUrl(proofUrl);
     } finally {

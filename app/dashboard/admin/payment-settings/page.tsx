@@ -16,14 +16,21 @@ interface PaymentSettings {
     momo_code?: string;
     account_name?: string;
     instructions?: string;
+    bank_name?: string;
+    bank_account_name?: string;
+    bank_account_number?: string;
   };
 }
 
 export default function PaymentSettingsPage() {
   const [momoSettings, setMomoSettings] = useState<PaymentSettings | null>(null);
+  const [bankSettings, setBankSettings] = useState<PaymentSettings | null>(null);
+  const [bankForm, setBankForm] = useState({ bank_name: '', bank_account_name: '', bank_account_number: '', is_active: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
   const [message, setMessage] = useState('');
+  const [bankMessage, setBankMessage] = useState('');
   const [previewQRCode, setPreviewQRCode] = useState<string>('');
   const [generatingPreview, setGeneratingPreview] = useState(false);
   const router = useRouter();
@@ -56,19 +63,34 @@ export default function PaymentSettingsPage() {
   };
 
   const loadSettings = async () => {
-    const { data, error } = await supabase
+    const { data: momoData } = await supabase
       .from('payment_settings')
       .select('*')
       .eq('payment_method', 'momo')
       .single();
 
-    if (data) {
-      setMomoSettings(data);
-      // Generate preview QR: Priority to MoMo code, fallback to phone
-      const recipient = data.settings.momo_code || data.settings.phone_number;
+    if (momoData) {
+      setMomoSettings(momoData);
+      const recipient = momoData.settings.momo_code || momoData.settings.phone_number;
       if (recipient) {
-        generatePreviewQR(recipient, data.settings.account_name, data.settings.provider);
+        generatePreviewQR(recipient, momoData.settings.account_name, momoData.settings.provider);
       }
+    }
+
+    const { data: bankData } = await supabase
+      .from('payment_settings')
+      .select('*')
+      .eq('payment_method', 'bank')
+      .single();
+
+    if (bankData) {
+      setBankSettings(bankData);
+      setBankForm({
+        bank_name: bankData.settings.bank_name || '',
+        bank_account_name: bankData.settings.bank_account_name || '',
+        bank_account_number: bankData.settings.bank_account_number || '',
+        is_active: bankData.is_active || false,
+      });
     }
     setLoading(false);
   };
@@ -147,26 +169,9 @@ export default function PaymentSettingsPage() {
 
       const is_active = formData.get('is_active') === 'on';
 
-      if (momoSettings) {
-        // Update existing
-        const { error } = await supabase
-          .from('payment_settings')
-          .update({ settings, is_active })
-          .eq('id', momoSettings.id);
-
-        if (error) throw error;
-      } else {
-        // Create new
-        const { error } = await supabase
-          .from('payment_settings')
-          .insert({
-            payment_method: 'momo',
-            settings,
-            is_active
-          });
-
-        if (error) throw error;
-      }
+      const { error } = await supabase.from('payment_settings')
+        .upsert({ ...(momoSettings ? { id: momoSettings.id } : {}), payment_method: 'momo', settings, is_active }, { onConflict: 'payment_method' });
+      if (error) throw error;
 
       setMessage('Settings saved successfully! QR codes will be generated dynamically for each booking.');
       await loadSettings();
@@ -350,6 +355,96 @@ export default function PaymentSettingsPage() {
               Cancel
             </Link>
           </div>
+        </form>
+      </div>
+
+      {/* Bank Transfer Settings */}
+      <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold">Bank Transfer</h2>
+          <p className="text-gray-600">Configure bank transfer payment details for service bookings</p>
+        </div>
+
+        {bankMessage && (
+          <div className={`mb-4 p-4 rounded-md ${bankMessage.includes('Error') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+            {bankMessage}
+          </div>
+        )}
+
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setSavingBank(true);
+          setBankMessage('');
+          try {
+            const settings = {
+              bank_name: bankForm.bank_name,
+              bank_account_name: bankForm.bank_account_name,
+              bank_account_number: bankForm.bank_account_number,
+            };
+            const is_active = bankForm.is_active;
+            const { error } = await supabase.from('payment_settings')
+              .upsert({ ...(bankSettings ? { id: bankSettings.id } : {}), payment_method: 'bank', settings, is_active }, { onConflict: 'payment_method' });
+            if (error) throw error;
+            setBankMessage('Bank settings saved successfully!');
+            await loadSettings();
+          } catch (error: any) {
+            setBankMessage(`Error: ${error.message}`);
+          } finally {
+            setSavingBank(false);
+          }
+        }} className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-md">
+            <input
+              type="checkbox"
+              name="bank_is_active"
+              checked={bankForm.is_active}
+              onChange={(e) => setBankForm(f => ({ ...f, is_active: e.target.checked }))}
+              className="w-5 h-5 text-blue-600"
+            />
+            <label className="text-sm font-medium">
+              Enable Bank Transfer payments
+            </label>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+            <input
+              type="text"
+              name="bank_name"
+              value={bankForm.bank_name}
+              onChange={(e) => setBankForm(f => ({ ...f, bank_name: e.target.value }))}
+              placeholder="e.g., Bank of Kigali, Equity Bank"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Account Name</label>
+            <input
+              type="text"
+              name="bank_account_name"
+              value={bankForm.bank_account_name}
+              onChange={(e) => setBankForm(f => ({ ...f, bank_account_name: e.target.value }))}
+              placeholder="Account holder name"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
+            <input
+              type="text"
+              name="bank_account_number"
+              value={bankForm.bank_account_number}
+              onChange={(e) => setBankForm(f => ({ ...f, bank_account_number: e.target.value }))}
+              placeholder="e.g., 00012345678"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={savingBank}
+            className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {savingBank ? 'Saving...' : 'Save Bank Settings'}
+          </button>
         </form>
       </div>
 
