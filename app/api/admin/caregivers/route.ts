@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 // Generate a random 6-digit PIN
 function generatePIN(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
