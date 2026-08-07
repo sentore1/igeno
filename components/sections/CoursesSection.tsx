@@ -154,7 +154,7 @@ export default function CoursesSection() {
 
       {loading && activeTab === 'courses' ? (
         <div className="flex justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
         </div>
       ) : activeTab === 'courses' && courses.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No courses published yet.</div>

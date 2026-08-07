@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@/lib/supabase-client';
 import { Course } from '@/lib/types';
+import CoursePaymentModal from '@/components/CoursePaymentModal';
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap the params Promise
@@ -17,7 +18,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
+  const [enrollmentStatus, setEnrollmentStatus] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -25,6 +28,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     loadCourse();
     checkAuth();
   }, [id]);
+
+  useEffect(() => {
+    if (course) {
+      document.title = `${course.title} - Care iGeno Academy`;
+    }
+  }, [course]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -65,7 +74,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       .eq('course_id', id)
       .single();
 
-    if (data) setEnrolled(true);
+    if (data) {
+      setEnrolled(true);
+      setEnrollmentStatus(data);
+    }
   };
 
   const handleEnroll = async () => {
@@ -74,6 +86,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       return;
     }
 
+    // Check if course requires payment
+    if (course?.requires_payment && course?.price && course.price > 0) {
+      // Show payment modal for paid courses
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // For free courses, enroll directly
     setEnrolling(true);
     try {
       const { error } = await supabase
@@ -83,16 +103,26 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           course_id: id,
           status: 'active',
           progress: 0,
+          payment_status: 'not_required',
+          can_access: true,
         });
 
       if (error) throw error;
 
       setEnrolled(true);
       alert('Successfully enrolled in course!');
+      await checkEnrollment(user.id);
     } catch (err: any) {
       alert(err.message || 'Failed to enroll');
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const handlePaymentSubmitted = async () => {
+    // Refresh enrollment status after payment submission
+    if (user) {
+      await checkEnrollment(user.id);
     }
   };
 
@@ -137,16 +167,35 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               {course.category}
             </span>
             <h1 className="text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
-            <p className="text-xl text-gray-600">{course.description}</p>
+            <div className="text-xl text-gray-600 prose max-w-none" dangerouslySetInnerHTML={{ __html: course.description }} />
           </div>
 
           {/* Course Image */}
           <div className="mb-8">
-            <div className="w-full h-96 bg-gradient-to-r from-purple-400 to-purple-600 rounded-lg flex items-center justify-center">
-              <svg className="w-24 h-24 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+            <div className="w-full rounded-lg overflow-hidden shadow-lg" style={{ maxHeight: '500px' }}>
+              {course.featured_image_url ? (
+                <img
+                  src={course.featured_image_url}
+                  alt={course.title}
+                  className="w-full h-full object-cover"
+                  style={{ aspectRatio: '16/9' }}
+                />
+              ) : (
+                <div className="w-full bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center" style={{ aspectRatio: '16/9' }}>
+                  <svg className="w-24 h-24 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+              )}
             </div>
+            {course.price && course.price > 0 && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-purple-100 text-purple-900 px-4 py-2 rounded-full font-bold text-lg">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {course.price.toLocaleString()} RWF
+              </div>
+            )}
           </div>
 
           {/* What You'll Learn */}
@@ -185,19 +234,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           {/* Course Description */}
           <div className="bg-white rounded-lg shadow-md p-8">
             <h2 className="text-2xl font-bold mb-6">Course Description</h2>
-            <div className="prose max-w-none">
-              <p className="text-gray-600 mb-4">
-                {course.description}
-              </p>
-              {lessons.length === 0 && (
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h3 className="text-sm font-semibold text-yellow-20 mb-2">Course Content</h3>
-                  <p className="text-sm text-yellow-800">
-                    Lessons are being added to this course. Once you enroll, you'll be notified when new content becomes available.
-                  </p>
-                </div>
-              )}
-            </div>
+            <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: course.description }} />
+            {lessons.length === 0 && (
+              <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: '#694EAC' }}>
+                <h3 className="text-sm font-semibold text-white mb-2">Course Content</h3>
+                <p className="text-sm text-white">
+                  Lessons are being added to this course. Once you enroll, you'll be notified when new content becomes available.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -227,18 +272,58 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             <div className="border-t pt-6">
               {enrolled ? (
                 <div>
-                  <Link
-                    href={`/academy/courses/${id}/learn`}
-                    className="block w-full px-6 py-3 text-white text-center rounded-lg font-semibold mb-3"
-                    style={{ backgroundColor: '#1992A3' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#147a8a'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1992A3'}
-                  >
-                    Start Learning →
-                  </Link>
-                  <p className="text-sm text-center text-green-600 font-semibold">
-                    ✓ You're enrolled in this course
-                  </p>
+                  {enrollmentStatus?.payment_status === 'pending' ? (
+                    <div className="text-center">
+                      <div className="mb-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <svg className="w-12 h-12 text-yellow-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="font-semibold text-yellow-900 mb-1">Payment Pending</p>
+                        <p className="text-sm text-yellow-700">
+                          Your payment is being reviewed by admin. You'll get access once approved.
+                        </p>
+                      </div>
+                      <button
+                        disabled
+                        className="w-full px-6 py-3 bg-gray-300 text-gray-600 rounded-lg font-semibold cursor-not-allowed"
+                      >
+                        Awaiting Payment Approval
+                      </button>
+                    </div>
+                  ) : enrollmentStatus?.payment_status === 'rejected' ? (
+                    <div className="text-center">
+                      <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <svg className="w-12 h-12 text-red-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <p className="font-semibold text-red-900 mb-1">Payment Rejected</p>
+                        <p className="text-sm text-red-700">
+                          Your payment was not approved. Please try enrolling again.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowPaymentModal(true)}
+                        className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
+                      >
+                        Submit Payment Again
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Link
+                        href={`/academy/courses/${id}/learn`}
+                        className="block w-full px-6 py-3 text-white text-center rounded-lg font-semibold mb-3"
+                        style={{ backgroundColor: '#1992A3' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#147a8a'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1992A3'}
+                      >
+                        Start Learning →
+                      </Link>
+                      <p className="text-sm text-center text-green-600 font-semibold">
+                        ✓ You're enrolled in this course
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -308,6 +393,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && course && (
+        <CoursePaymentModal
+          courseId={id}
+          courseTitle={course.title}
+          coursePrice={course.price || 0}
+          onClose={() => setShowPaymentModal(false)}
+          onPaymentSubmitted={handlePaymentSubmitted}
+        />
+      )}
     </div>
   );
 }

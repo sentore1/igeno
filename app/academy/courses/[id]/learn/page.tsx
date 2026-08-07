@@ -226,7 +226,10 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
             {/* Content */}
             {activeLesson.content && (
               <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{activeLesson.content}</p>
+                <div 
+                  className="prose max-w-none text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: activeLesson.content }}
+                />
               </div>
             )}
 

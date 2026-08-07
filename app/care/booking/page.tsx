@@ -53,7 +53,7 @@ export default function BookingPage() {
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
-  const [duration, setDuration] = useState('60');
+  const [duration, setDuration] = useState('1'); // Default to 1 day
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +66,8 @@ export default function BookingPage() {
   const [calculatedAmount, setCalculatedAmount] = useState<number>(0);
   const [dynamicQRCode, setDynamicQRCode] = useState<string>('');
   const [generatingQR, setGeneratingQR] = useState(false);
+  const [bookingDurationMode, setBookingDurationMode] = useState<'hourly' | 'daily' | 'both'>('daily');
+  const [durationType, setDurationType] = useState<'hours' | 'days'>('days');
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -73,11 +75,12 @@ export default function BookingPage() {
     checkAuth();
     loadServices();
     loadPaymentSettings();
+    loadBookingDurationMode();
   }, []);
 
   useEffect(() => {
     calculateAmount();
-  }, [selectedService, duration]);
+  }, [selectedService, duration, durationType]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -162,9 +165,48 @@ export default function BookingPage() {
     if (bankData) setBankSettings(bankData);
   };
 
+  const loadBookingDurationMode = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'booking_duration_mode')
+        .single();
+
+      if (data && !error) {
+        const mode = data.setting_value as 'hourly' | 'daily' | 'both';
+        setBookingDurationMode(mode);
+        
+        // Set default duration type based on mode
+        if (mode === 'daily') {
+          setDurationType('days');
+          setDuration('1'); // Default to 1 day
+        } else {
+          setDurationType('hours');
+          setDuration('60'); // Default to 1 hour
+        }
+      }
+    } catch (err) {
+      console.error('Error loading booking duration mode:', err);
+      // Default to daily if error
+      setBookingDurationMode('daily');
+      setDurationType('days');
+      setDuration('1');
+    }
+  };
+
   const calculateAmount = () => {
     if (selectedService && selectedService.price_per_hour) {
-      const hours = parseInt(duration) / 60;
+      let hours: number;
+      
+      if (durationType === 'days') {
+        // Convert days to hours (assuming 8-hour workday)
+        hours = parseInt(duration) * 8;
+      } else {
+        // Already in minutes, convert to hours
+        hours = parseInt(duration) / 60;
+      }
+      
       setCalculatedAmount(selectedService.price_per_hour * hours);
     } else {
       setCalculatedAmount(0);
@@ -299,7 +341,7 @@ export default function BookingPage() {
           service_type: selectedService?.name || serviceType,
           scheduled_date: scheduledDate,
           scheduled_time: scheduledTime,
-          duration: parseInt(duration),
+          duration: durationType === 'days' ? parseInt(duration) * 480 : parseInt(duration), // Convert days to minutes (8 hours = 480 min)
           notes,
           status: 'pending',
           payment_status: paymentProofUrl ? 'pending_verification' : 'pending',
@@ -376,8 +418,8 @@ export default function BookingPage() {
       <h1 className="text-3xl font-bold mb-8 text-center">Book a Care Service</h1>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="mb-6 rounded-lg p-4" style={{ backgroundColor: '#1992A3' }}>
+          <p className="text-white font-semibold">{error}</p>
         </div>
       )}
 
@@ -457,19 +499,91 @@ export default function BookingPage() {
               <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-2">
                 Duration *
               </label>
-              <select
-                id="duration"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-              >
-                <option value="60">1 hour</option>
-                <option value="120">2 hours</option>
-                <option value="180">3 hours</option>
-                <option value="240">4 hours</option>
-                <option value="480">8 hours</option>
-              </select>
+              
+              {/* Show duration type selector if mode is 'both' */}
+              {bookingDurationMode === 'both' && (
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDurationType('hours');
+                      setDuration('60'); // Reset to 1 hour
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition ${
+                      durationType === 'hours'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Per Hour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDurationType('days');
+                      setDuration('1'); // Reset to 1 day
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-md font-semibold transition ${
+                      durationType === 'days'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Per Day
+                  </button>
+                </div>
+              )}
+
+              {/* Duration selector based on type */}
+              {(durationType === 'hours' || bookingDurationMode === 'hourly') && (
+                <select
+                  id="duration"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                >
+                  <option value="60">1 hour</option>
+                  <option value="120">2 hours</option>
+                  <option value="180">3 hours</option>
+                  <option value="240">4 hours</option>
+                  <option value="300">5 hours</option>
+                  <option value="360">6 hours</option>
+                  <option value="420">7 hours</option>
+                  <option value="480">8 hours</option>
+                  <option value="540">9 hours</option>
+                  <option value="600">10 hours</option>
+                  <option value="660">11 hours</option>
+                  <option value="720">12 hours</option>
+                </select>
+              )}
+
+              {(durationType === 'days' || bookingDurationMode === 'daily') && (
+                <select
+                  id="duration"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                >
+                  <option value="1">1 day</option>
+                  <option value="2">2 days</option>
+                  <option value="3">3 days</option>
+                  <option value="4">4 days</option>
+                  <option value="5">5 days</option>
+                  <option value="6">6 days</option>
+                  <option value="7">1 week</option>
+                  <option value="14">2 weeks</option>
+                  <option value="21">3 weeks</option>
+                  <option value="30">1 month</option>
+                </select>
+              )}
+              
+              <p className="text-xs text-gray-600 mt-1">
+                {durationType === 'days' || bookingDurationMode === 'daily'
+                  ? 'Select the number of days you need the service'
+                  : 'Select the number of hours you need the service'}
+              </p>
             </div>
 
             {calculatedAmount > 0 && (

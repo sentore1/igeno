@@ -277,6 +277,23 @@ export default function AdminDashboard() {
           <div className="mt-2 inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">NEW</div>
         </Link>
 
+        {/* Enrollments & Payments */}
+        <Link
+          href="/dashboard/admin/enrollments"
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition border-2 border-yellow-200"
+        >
+          <div className="flex items-center mb-4">
+            <div className="p-3 rounded-lg" style={{backgroundColor: '#F59E0B'}}>
+              <svg className="w-8 h-8" style={{color: '#fff'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-xl font-bold mb-2">Enrollments & Payments</h3>
+          <p className="text-gray-600">Review and approve course payments</p>
+          <div className="mt-2 inline-block px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">NEW</div>
+        </Link>
+
         {/* Settings */}
         <Link
           href="/dashboard/admin/settings"

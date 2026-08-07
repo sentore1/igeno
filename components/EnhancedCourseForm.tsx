@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import RichTextEditor from './RichTextEditor';
 
 interface EnhancedCourseFormProps {
   formData: any;
@@ -13,6 +14,8 @@ interface EnhancedCourseFormProps {
   setQuizzes: (quizzes: any[]) => void;
   activeTab: 'details' | 'resources' | 'quizzes';
   setActiveTab: (tab: 'details' | 'resources' | 'quizzes') => void;
+  featuredImage?: File | null;
+  setFeaturedImage?: (file: File | null) => void;
 }
 
 export default function EnhancedCourseForm({
@@ -26,6 +29,8 @@ export default function EnhancedCourseForm({
   setQuizzes,
   activeTab,
   setActiveTab,
+  featuredImage,
+  setFeaturedImage,
 }: EnhancedCourseFormProps) {
   const [learningOutcome, setLearningOutcome] = useState('');
   const [currentResource, setCurrentResource] = useState({
@@ -159,16 +164,34 @@ export default function EnhancedCourseForm({
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Description *
+                Introduction *
               </label>
               <textarea
                 required
-                rows={4}
+                rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="Describe what students will learn..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Write a brief introduction that welcomes students and gives an overview of what they'll learn..."
+                value={formData.introduction || ''}
+                onChange={(e) => setFormData({ ...formData, introduction: e.target.value })}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                This introduction will be shown to students before they enroll in the course
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Course Description *
+              </label>
+              <RichTextEditor
+                value={formData.description}
+                onChange={(value) => setFormData({ ...formData, description: value })}
+                placeholder="Write a detailed description of the course content, objectives, and what students will gain..."
+                minHeight="250px"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Use the toolbar to format your course description with headings, bold, italic, lists, and more
+              </p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-5">
@@ -206,18 +229,46 @@ export default function EnhancedCourseForm({
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                YouTube URL (optional)
-              </label>
-              <input
-                type="url"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="https://youtube.com/watch?v=..."
-                value={formData.youtube_url}
-                onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
-              />
-              <p className="text-xs text-gray-500 mt-1">Add a course introduction or overview video</p>
+            <div className="grid md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Price (RWF)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="100"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter 0 for free course"
+                  value={formData.price || 0}
+                  onChange={(e) => {
+                    const price = parseFloat(e.target.value) || 0;
+                    setFormData({ 
+                      ...formData, 
+                      price,
+                      is_free: price === 0,
+                      requires_payment: price > 0
+                    });
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Set to 0 for a free course
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  YouTube URL (optional)
+                </label>
+                <input
+                  type="url"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="https://youtube.com/watch?v=..."
+                  value={formData.youtube_url}
+                  onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
+                />
+                <p className="text-xs text-gray-500 mt-1">Course intro video</p>
+              </div>
             </div>
 
             <div>
@@ -231,6 +282,66 @@ export default function EnhancedCourseForm({
                 value={formData.prerequisites}
                 onChange={(e) => setFormData({ ...formData, prerequisites: e.target.value })}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Featured Image *
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition">
+                {featuredImage || formData.featured_image_url ? (
+                  <div className="space-y-3">
+                    <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                      <img
+                        src={featuredImage ? URL.createObjectURL(featuredImage) : formData.featured_image_url}
+                        alt="Featured"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (setFeaturedImage) setFeaturedImage(null);
+                        setFormData({ ...formData, featured_image_url: null });
+                      }}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <label htmlFor="featured-image" className="cursor-pointer">
+                      <span className="text-purple-600 hover:text-purple-700 font-medium">
+                        Click to upload
+                      </span>
+                      <span className="text-gray-500"> or drag and drop</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PNG, JPG, GIF up to 5MB (Recommended: 800x400px)
+                    </p>
+                    <input
+                      id="featured-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && setFeaturedImage) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert('Image size must be less than 5MB');
+                            return;
+                          }
+                          setFeaturedImage(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -270,7 +381,7 @@ export default function EnhancedCourseForm({
               </div>
             </div>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
               <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -282,6 +393,20 @@ export default function EnhancedCourseForm({
                   Publish immediately
                 </span>
               </label>
+              
+              {(formData.price > 0 || !formData.is_free) && (
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    checked={formData.requires_payment}
+                    onChange={(e) => setFormData({ ...formData, requires_payment: e.target.checked })}
+                  />
+                  <span className="ml-3 text-sm font-semibold text-gray-900">
+                    Require payment approval before course access
+                  </span>
+                </label>
+              )}
             </div>
           </>
         )}
