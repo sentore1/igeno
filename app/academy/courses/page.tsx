@@ -64,6 +64,25 @@ function CoursesContent() {
     'Specialized Care'
   ];
 
+  // Helper function to strip HTML and decode entities for preview text
+  const getPlainTextPreview = (html: string, maxLength: number = 150): string => {
+    if (!html) return '';
+    
+    // Create a temporary element to decode HTML entities
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Get text content (strips HTML tags)
+    const text = tempDiv.textContent || tempDiv.innerText || '';
+    
+    // Truncate to maxLength
+    if (text.length > maxLength) {
+      return text.substring(0, maxLength) + '...';
+    }
+    
+    return text;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex justify-between items-center mb-8">
@@ -111,15 +130,30 @@ function CoursesContent() {
         <div className="grid md:grid-cols-3 gap-8">
           {courses.map((course) => (
             <div key={course.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-              <div className="h-48 bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center">
-                <svg className="w-16 h-16 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
+              <div className="h-48 bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center relative overflow-hidden">
+                {course.featured_image_url ? (
+                  <img
+                    src={course.featured_image_url}
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <svg className="w-16 h-16 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                )}
+                {course.price && course.price > 0 && (
+                  <div className="absolute top-2 right-2 bg-white px-3 py-1 rounded-full font-bold text-purple-900 shadow-lg text-sm">
+                    {course.price.toLocaleString()} RWF
+                  </div>
+                )}
               </div>
               <div className="p-6">
                 <div className="text-sm text-purple-600 font-semibold mb-2">{course.category}</div>
                 <h3 className="text-xl font-semibold mb-2 line-clamp-2">{course.title}</h3>
-                <p className="text-gray-600 mb-4 line-clamp-3">{course.description}</p>
+                <p className="text-gray-600 mb-4 line-clamp-3 text-sm">
+                  {getPlainTextPreview(course.description, 120)}
+                </p>
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm text-gray-500">Duration</div>

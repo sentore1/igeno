@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@/lib/supabase-client';
 import QuizBuilder from '@/components/QuizBuilder';
+import RichTextEditor from '@/components/RichTextEditor';
 
 export default function CourseEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -22,6 +23,10 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
   const [showAddQuiz, setShowAddQuiz] = useState(false);
   const [showAddCourseQuiz, setShowAddCourseQuiz] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
+  const [newLessonContent, setNewLessonContent] = useState('');
+  const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [newLessonVideoUrl, setNewLessonVideoUrl] = useState('');
+  const [newLessonDuration, setNewLessonDuration] = useState(30);
   
   const router = useRouter();
   const supabase = createBrowserClient();
@@ -88,15 +93,13 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
 
   const addLesson = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
 
     const { error } = await supabase.from('lessons').insert({
       course_id: id,
-      title: formData.get('title'),
-      content: formData.get('content'),
-      video_url: formData.get('video_url') || null,
-      duration_minutes: parseInt(formData.get('duration_minutes') as string) || 0,
+      title: newLessonTitle,
+      content: newLessonContent,
+      video_url: newLessonVideoUrl || null,
+      duration_minutes: newLessonDuration,
       order_index: lessons.length + 1,
     });
 
@@ -104,7 +107,11 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
       alert(`Failed to add lesson: ${error.message}`);
     } else {
       alert('Lesson added successfully!');
-      form.reset();
+      // Reset form
+      setNewLessonTitle('');
+      setNewLessonContent('');
+      setNewLessonVideoUrl('');
+      setNewLessonDuration(30);
       setShowAddLesson(false);
       loadCourse();
     }
@@ -270,13 +277,29 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Introduction</label>
               <textarea
-                rows={4}
-                value={course.description}
-                onChange={(e) => setCourse({ ...course, description: e.target.value })}
+                rows={3}
+                value={course.introduction || ''}
+                onChange={(e) => setCourse({ ...course, introduction: e.target.value })}
                 className="w-full px-4 py-2 border rounded-md"
+                placeholder="Write a brief introduction that welcomes students and gives an overview..."
               />
+              <p className="text-xs text-gray-500 mt-1">
+                This introduction will be shown to students before they enroll
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description (with Rich Formatting)</label>
+              <RichTextEditor
+                value={course.description}
+                onChange={(value) => setCourse({ ...course, description: value })}
+                placeholder="Write a detailed description with formatting..."
+                minHeight="250px"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Use the toolbar to format your course description with headings, bold, italic, lists, links, and more
+              </p>
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -516,7 +539,10 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
                       </span>
                       <h3 className="text-lg font-bold">{lesson.title}</h3>
                     </div>
-                    <p className="text-gray-600 mb-3">{lesson.content}</p>
+                    <div 
+                      className="text-gray-600 mb-3 prose max-w-none" 
+                      dangerouslySetInnerHTML={{ __html: lesson.content }}
+                    />
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       {lesson.video_url && (
                         <span className="flex items-center gap-1">
@@ -669,7 +695,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
       {/* Add Lesson Modal */}
       {showAddLesson && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold">Add New Lesson</h2>
@@ -683,19 +709,47 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
             <form onSubmit={addLesson} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Lesson Title *</label>
-                <input type="text" name="title" required className="w-full px-4 py-2 border rounded-md" placeholder="e.g., Introduction to Patient Care" />
+                <input 
+                  type="text" 
+                  value={newLessonTitle}
+                  onChange={(e) => setNewLessonTitle(e.target.value)}
+                  required 
+                  className="w-full px-4 py-2 border rounded-md" 
+                  placeholder="e.g., Introduction to Patient Care" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Content *</label>
-                <textarea name="content" rows={6} required className="w-full px-4 py-2 border rounded-md" placeholder="Lesson description and content..." />
+                <RichTextEditor
+                  value={newLessonContent}
+                  onChange={setNewLessonContent}
+                  placeholder="Write your lesson content here. Use the toolbar to format text, add headings, lists, and more..."
+                  minHeight="300px"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Use the toolbar above to format your lesson content with headings, bold, italic, lists, and more.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Video URL (optional)</label>
-                <input type="url" name="video_url" className="w-full px-4 py-2 border rounded-md" placeholder="https://youtube.com/watch?v=..." />
+                <input 
+                  type="url" 
+                  value={newLessonVideoUrl}
+                  onChange={(e) => setNewLessonVideoUrl(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-md" 
+                  placeholder="https://youtube.com/watch?v=..." 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes) *</label>
-                <input type="number" name="duration_minutes" required defaultValue={30} min={1} className="w-full px-4 py-2 border rounded-md" />
+                <input 
+                  type="number" 
+                  value={newLessonDuration}
+                  onChange={(e) => setNewLessonDuration(parseInt(e.target.value))}
+                  required 
+                  min={1} 
+                  className="w-full px-4 py-2 border rounded-md" 
+                />
               </div>
               <div className="flex gap-4">
                 <button type="submit" className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-md font-semibold hover:bg-purple-700">

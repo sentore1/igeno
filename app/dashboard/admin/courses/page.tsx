@@ -16,17 +16,22 @@ export default function CoursesManagement() {
   const [activeTab, setActiveTab] = useState<'details' | 'resources' | 'quizzes'>('details');
   const [formData, setFormData] = useState({
     title: '',
+    introduction: '',
     description: '',
     category: 'Caregiver Training',
     duration_hours: 10,
     is_published: false,
     youtube_url: '',
     prerequisites: '',
+    price: 0,
+    is_free: true,
+    requires_payment: false,
   });
   const [learningOutcomes, setLearningOutcomes] = useState<string[]>([]);
   const [learningOutcome, setLearningOutcome] = useState('');
   const [resources, setResources] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [featuredImage, setFeaturedImage] = useState<File | null>(null);
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -118,18 +123,48 @@ export default function CoursesManagement() {
         return;
       }
 
+      // Upload featured image if provided
+      let featuredImageUrl = null;
+      if (featuredImage) {
+        const fileExt = featuredImage.name.split('.').pop();
+        const fileName = `course-${Date.now()}.${fileExt}`;
+        const filePath = `featured-images/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('course-images')
+          .upload(filePath, featuredImage);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          alert('Failed to upload image. Please try again.');
+          setCreating(false);
+          return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('course-images')
+          .getPublicUrl(filePath);
+
+        featuredImageUrl = publicUrl;
+      }
+
       // Create the course with new fields
+      console.log('Description before save:', formData.description);
+      
       const { data: course, error: courseError } = await supabase
         .from('courses')
         .insert({
           ...formData,
           instructor_id: session.user.id,
           learning_outcomes: learningOutcomes,
+          featured_image_url: featuredImageUrl,
         })
         .select()
         .single();
 
       if (courseError) throw courseError;
+      
+      console.log('Course saved, description:', course.description);
 
       // Add resources if any
       if (resources.length > 0) {
@@ -165,16 +200,21 @@ export default function CoursesManagement() {
       setShowCreateModal(false);
       setFormData({
         title: '',
+        introduction: '',
         description: '',
         category: 'Caregiver Training',
         duration_hours: 10,
         is_published: false,
         youtube_url: '',
         prerequisites: '',
+        price: 0,
+        is_free: true,
+        requires_payment: false,
       });
       setLearningOutcomes([]);
       setResources([]);
       setQuizzes([]);
+      setFeaturedImage(null);
       setActiveTab('details');
       loadCourses();
     } catch (err: any) {
@@ -249,6 +289,8 @@ export default function CoursesManagement() {
                 setQuizzes={setQuizzes}
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
+                featuredImage={featuredImage}
+                setFeaturedImage={setFeaturedImage}
               />
 
               <div className="mt-8 flex gap-3 pt-6 border-t">
@@ -313,10 +355,23 @@ export default function CoursesManagement() {
         {courses.map((course) => (
           <div key={course.id} className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Course Image */}
-            <div className="h-40 bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center">
-              <svg className="w-12 h-12 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+            <div className="h-40 bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center relative overflow-hidden">
+              {course.featured_image_url ? (
+                <img
+                  src={course.featured_image_url}
+                  alt={course.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <svg className="w-12 h-12 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              )}
+              {course.price && course.price > 0 && (
+                <div className="absolute top-2 right-2 bg-white px-3 py-1 rounded-full font-bold text-purple-900 shadow-lg">
+                  {course.price.toLocaleString()} RWF
+                </div>
+              )}
             </div>
 
             {/* Course Info */}
@@ -333,7 +388,7 @@ export default function CoursesManagement() {
               </div>
 
               <h3 className="text-lg font-bold mb-2 line-clamp-2">{course.title}</h3>
-              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description}</p>
+              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{course.description?.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}</p>
 
               <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                 <span>{course.duration_hours} hours</span>

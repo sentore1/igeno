@@ -50,6 +50,7 @@ export interface Booking {
 export interface Course {
   id: string;
   title: string;
+  introduction?: string;
   description: string;
   category: string;
   instructor_id: string;

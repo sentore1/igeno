@@ -172,7 +172,7 @@ SELECT * FROM create_user_with_profile(
   'admin@company.com',
   'System Admin',
   'admin',
-  '+1555000000'
+  '+250555000000'
 );
 ```
 

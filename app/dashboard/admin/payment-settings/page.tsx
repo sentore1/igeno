@@ -251,18 +251,25 @@ export default function PaymentSettingsPage() {
             <div className="flex gap-4 text-sm">
               <div className="flex-1 bg-white p-3 rounded border border-yellow-300">
                 <strong className="text-yellow-900">Option 1: Phone Number</strong>
-                <p className="text-xs text-gray-600 mt-1">Use for phone-based payments</p>
+                <p className="text-xs text-gray-600 mt-1">Full phone number for QR code generation</p>
               </div>
               <div className="flex-1 bg-white p-3 rounded border-2 border-green-500">
                 <strong className="text-green-900">Option 2: MoMo Code ⭐</strong>
-                <p className="text-xs text-gray-600 mt-1">Preferred for QR codes</p>
+                <p className="text-xs text-gray-600 mt-1">Preferred - generates cleaner QR codes</p>
               </div>
+            </div>
+            
+            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-900">
+                <strong>📱 QR Code:</strong> System automatically generates a scannable QR code from your input.
+                When scanned, opens: <code className="bg-white px-2 py-1 rounded text-xs">*182*8*1*[CODE]*[AMOUNT]#</code>
+              </p>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone Number (Option 1)
+              Phone Number / MoMo Code (for QR Generation) *
             </label>
             <input
               type="tel"

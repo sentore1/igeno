@@ -14,6 +14,7 @@ interface SystemSettings {
   maxBookingsPerUser: number;
   bookingAdvanceNoticeDays: number;
   defaultCurrency: string;
+  bookingDurationMode: 'hourly' | 'daily' | 'both';
 }
 
 export default function SystemSettings() {
@@ -26,6 +27,8 @@ export default function SystemSettings() {
     maxBookingsPerUser: 10,
     bookingAdvanceNoticeDays: 2,
     defaultCurrency: 'RWF',
+    bookingDurationMode: 'daily',
+  });
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,9 +59,40 @@ export default function SystemSettings() {
       return;
     }
 
-    // In a real app, load settings from database
-    // For now, using local state
+    // Load settings from database
+    await loadSettings();
     setLoading(false);
+  };
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data) {
+        const settingsMap: any = {};
+        data.forEach((setting: any) => {
+          settingsMap[setting.setting_key] = setting.setting_value;
+        });
+
+        setSettings({
+          platformName: settingsMap.platform_name || 'IgenoGate Care Platform',
+          supportEmail: settingsMap.support_email || 'support@igenogate.com',
+          maintenanceMode: settingsMap.maintenance_mode || false,
+          allowNewRegistrations: settingsMap.allow_new_registrations !== false,
+          requireEmailVerification: settingsMap.require_email_verification !== false,
+          maxBookingsPerUser: settingsMap.max_bookings_per_user || 10,
+          bookingAdvanceNoticeDays: settingsMap.booking_advance_notice_days || 2,
+          defaultCurrency: settingsMap.default_currency || 'RWF',
+          bookingDurationMode: settingsMap.booking_duration_mode || 'daily',
+        });
+      }
+    } catch (err) {
+      console.error('Error loading settings:', err);
+    }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -67,9 +101,27 @@ export default function SystemSettings() {
     setMessage('');
 
     try {
-      // In a real app, save to database
-      // For now, just simulate saving
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update each setting in the database
+      const updates = [
+        { key: 'platform_name', value: settings.platformName },
+        { key: 'support_email', value: settings.supportEmail },
+        { key: 'maintenance_mode', value: settings.maintenanceMode },
+        { key: 'allow_new_registrations', value: settings.allowNewRegistrations },
+        { key: 'require_email_verification', value: settings.requireEmailVerification },
+        { key: 'max_bookings_per_user', value: settings.maxBookingsPerUser },
+        { key: 'booking_advance_notice_days', value: settings.bookingAdvanceNoticeDays },
+        { key: 'default_currency', value: settings.defaultCurrency },
+        { key: 'booking_duration_mode', value: settings.bookingDurationMode },
+      ];
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('system_settings')
+          .update({ setting_value: JSON.stringify(update.value) })
+          .eq('setting_key', update.key);
+
+        if (error) throw error;
+      }
       
       setMessage('Settings saved successfully!');
       setTimeout(() => setMessage(''), 3000);
@@ -256,6 +308,24 @@ export default function SystemSettings() {
                 onChange={(e) => setSettings({ ...settings, bookingAdvanceNoticeDays: parseInt(e.target.value) || 0 })}
               />
               <p className="text-xs text-gray-600 mt-1">Minimum days in advance required for bookings</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Booking Duration Mode
+              </label>
+              <select
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                value={settings.bookingDurationMode}
+                onChange={(e) => setSettings({ ...settings, bookingDurationMode: e.target.value as 'hourly' | 'daily' | 'both' })}
+              >
+                <option value="hourly">Hourly Only (users select hours)</option>
+                <option value="daily">Daily Only (users select days)</option>
+                <option value="both">Both (users can choose hours or days)</option>
+              </select>
+              <p className="text-xs text-gray-600 mt-1">
+                Control whether users can book services per hour, per day, or both
+              </p>
             </div>
           </div>
         </div>
