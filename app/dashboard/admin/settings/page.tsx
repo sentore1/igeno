@@ -29,7 +29,6 @@ export default function SystemSettings() {
     defaultCurrency: 'RWF',
     bookingDurationMode: 'daily',
   });
-  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');

@@ -55,11 +55,15 @@ export interface Course {
   category: string;
   instructor_id: string;
   thumbnail?: string;
+  featured_image_url?: string;
   duration_hours: number;
   is_published: boolean;
   youtube_url?: string;
   prerequisites?: string;
   learning_outcomes?: string[];
+  requires_payment?: boolean;
+  price?: number;
+  currency?: string;
   created_at: string;
 }
 
@@ -109,6 +113,11 @@ export interface Enrollment {
   status: 'active' | 'completed' | 'dropped';
   enrolled_at: string;
   completed_at?: string;
+  payment_status?: 'pending' | 'completed' | 'failed' | 'refunded';
+  payment_method?: string;
+  payment_proof_url?: string;
+  payment_verified_at?: string;
+  amount_paid?: number;
 }
 
 export interface Quiz {

@@ -25,6 +25,7 @@ interface EnrollmentWithDetails {
     phone_number: string | null;
     transaction_reference: string | null;
     status: string;
+    rejection_reason?: string | null;
     created_at: string;
   };
 }
