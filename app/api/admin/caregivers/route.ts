@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       isExistingUser = true;
 
       // Update their role to caregiver in profile
-      await supabaseAdmin
+      await (supabaseAdmin as any)
         .from('profiles')
         .update({ role: 'caregiver', full_name: full_name })
         .eq('id', userId);
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     // Wait a moment for the trigger to complete
 
     // Check if caregiver record already exists for this user
-    const { data: existingCaregiver } = await supabaseAdmin
+    const { data: existingCaregiver } = await (supabaseAdmin as any)
       .from('caregivers')
       .select('id')
       .eq('user_id', userId)
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create caregiver record
-    const { data: caregiver, error: caregiverError } = await supabaseAdmin
+    const { data: caregiver, error: caregiverError } = await (supabaseAdmin as any)
       .from('caregivers')
       .insert({
         user_id: userId,
