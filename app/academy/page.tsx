@@ -45,24 +45,34 @@ const features = [
   },
 ];
 
-const categories = ['Caregiver Training', 'Nursing Skills', 'Health & Safety', 'Communication', 'Career Development', 'Specialized Care'];
 
 export default function AcademyPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createBrowserClient();
 
   useEffect(() => {
-    const loadCourses = async () => {
-      const { data } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false });
-      if (data) setCourses(data);
+    const loadData = async () => {
+      const [coursesRes] = await Promise.all([
+        supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false }),
+        fetch('/api/categories')
+          .then(r => r.json())
+          .then(json => {
+            if (json.categories) {
+              setCategories(json.categories.map((c: { name: string }) => c.name));
+            }
+          })
+          .catch(() => {}),
+      ]);
+      if (coursesRes.data) setCourses(coursesRes.data);
       setLoading(false);
     };
-    loadCourses();
+    loadData();
   }, []);
 
   return (

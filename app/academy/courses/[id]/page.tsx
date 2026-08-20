@@ -148,14 +148,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Breadcrumb */}
-      <div className="mb-6 text-sm text-gray-600">
+      <div className="mb-6 text-sm text-gray-600 flex flex-wrap gap-1 items-center">
         <Link href="/" className="hover:text-gray-900">Home</Link>
-        {' > '}
+        <span>&gt;</span>
         <Link href="/academy" className="hover:text-gray-900">Academy</Link>
-        {' > '}
+        <span>&gt;</span>
         <Link href="/academy/courses" className="hover:text-gray-900">Courses</Link>
-        {' > '}
-        <span className="text-gray-900">{course.title}</span>
+        <span>&gt;</span>
+        <span className="text-gray-900 truncate max-w-[200px] sm:max-w-none">{course.title}</span>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -166,7 +166,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold mb-4">
               {course.category}
             </span>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
             <div className="text-xl text-gray-600 prose max-w-none" dangerouslySetInnerHTML={{ __html: course.description }} />
           </div>
 

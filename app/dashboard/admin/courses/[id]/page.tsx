@@ -16,6 +16,12 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [quizAttempts, setQuizAttempts] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
   
   // Form states
   const [showAddLesson, setShowAddLesson] = useState(false);
@@ -33,6 +39,10 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     checkAdmin();
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then(json => { if (json.categories) setCategories(json.categories); })
+      .catch(() => {});
   }, []);
 
   const checkAdmin = async () => {
@@ -72,7 +82,47 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
     if (lessonsRes.data) setLessons(lessonsRes.data);
     if (resourcesRes.data) setCourseResources(resourcesRes.data);
     if (quizzesRes.data) setCourseQuizzes(quizzesRes.data);
+
+    // Load enrollments with profile info
+    const { data: enrollData } = await supabase
+      .from('enrollments')
+      .select('*, profiles(full_name, email, phone)')
+      .eq('course_id', id)
+      .order('enrolled_at', { ascending: false });
+    if (enrollData) setEnrollments(enrollData);
+
+    // Load quiz attempts
+    const { data: attemptsData } = await supabase
+      .from('quiz_attempts')
+      .select('*, profiles(full_name)')
+      .order('created_at', { ascending: false });
+    if (attemptsData) setQuizAttempts(attemptsData);
+
+    // Load announcements (use course description updates as announcements if no table)
+    const { data: announcementsData } = await supabase
+      .from('course_announcements')
+      .select('*')
+      .eq('course_id', id)
+      .order('created_at', { ascending: false });
+    if (announcementsData) setAnnouncements(announcementsData);
+
     setLoading(false);
+  };
+
+  const postAnnouncement = async () => {
+    if (!newAnnouncement.title.trim() || !newAnnouncement.message.trim()) return;
+    setPostingAnnouncement(true);
+    const { error } = await supabase.from('course_announcements').insert({
+      course_id: id,
+      title: newAnnouncement.title,
+      message: newAnnouncement.message,
+    });
+    if (error) alert(`Error: ${error.message}`);
+    else {
+      setNewAnnouncement({ title: '', message: '' });
+      loadCourse();
+    }
+    setPostingAnnouncement(false);
   };
 
   const updateCourse = async (updates: any) => {
@@ -241,22 +291,27 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Tabs */}
-      <div className="border-b mb-6">
-        <nav className="flex space-x-8">
-          {['overview', 'resources', 'quizzes', 'lessons', 'students'].map((tab) => (
+      <div className="border-b mb-6 overflow-x-auto">
+        <nav className="flex min-w-max">
+          {[
+            { key: 'overview',     label: '1. Overview' },
+            { key: 'lessons',      label: '2. Lessons',     count: lessons.length },
+            { key: 'resources',    label: '3. Resources',   count: courseResources.length },
+            { key: 'assessments',  label: '4. Assessments', count: courseQuizzes.length },
+            { key: 'learners',     label: '5. Learners',    count: enrollments.length },
+            { key: 'progress',     label: '6. Progress' },
+            { key: 'announcements',label: '7. Announcements', count: announcements.length },
+          ].map(({ key, label, count }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-4 px-1 border-b-2 font-medium text-sm capitalize ${
-                activeTab === tab
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`pb-4 px-4 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === key
                   ? 'border-purple-600 text-purple-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              {tab}
-              {tab === 'resources' && ` (${courseResources.length})`}
-              {tab === 'quizzes' && ` (${courseQuizzes.length})`}
-              {tab === 'lessons' && ` (${lessons.length})`}
+              {label}{count !== undefined ? ` (${count})` : ''}
             </button>
           ))}
         </nav>
@@ -309,12 +364,14 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
                   onChange={(e) => setCourse({ ...course, category: e.target.value })}
                   className="w-full px-4 py-2 border rounded-md"
                 >
-                  <option value="Caregiver Training">Caregiver Training</option>
-                  <option value="Nursing Skills">Nursing Skills</option>
-                  <option value="Health & Safety">Health & Safety</option>
-                  <option value="Communication">Communication</option>
-                  <option value="Career Development">Career Development</option>
-                  <option value="Specialized Care">Specialized Care</option>
+                  <option value="">Select a category…</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                  ))}
+                  {/* Keep the current value selectable even if it was removed from categories */}
+                  {course.category && !categories.find(c => c.name === course.category) && (
+                    <option value={course.category}>{course.category} (legacy)</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -684,11 +741,287 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* Students Tab */}
-      {activeTab === 'students' && (
+      {/* Assessments Tab */}
+      {activeTab === 'assessments' && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold mb-6">Enrolled Students</h2>
-          <p className="text-gray-600">Student management coming soon...</p>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold">Assessments</h2>
+              <p className="text-sm text-gray-600 mt-1">Knowledge quizzes and practical assessments</p>
+            </div>
+            <button
+              onClick={() => setShowAddCourseQuiz(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Assessment
+            </button>
+          </div>
+          {courseQuizzes.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              <p>No assessments added yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {courseQuizzes.map((quiz) => (
+                <div key={quiz.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{quiz.title}</h3>
+                      {quiz.description && <p className="text-sm text-gray-600 mt-1">{quiz.description}</p>}
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
+                        <span>{quiz.questions?.length || 0} questions</span>
+                        <span>•</span>
+                        <span>{quiz.passing_score}% to pass</span>
+                        <span>•</span>
+                        <span>{quiz.time_limit_minutes} min</span>
+                        <span>•</span>
+                        <span>{quiz.max_attempts} attempts</span>
+                        {quiz.is_required && <span className="text-red-600 font-semibold">• Required</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { if (confirm('Delete this assessment?')) supabase.from('course_quizzes').delete().eq('id', quiz.id).then(() => loadCourse()); }}
+                      className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Learners Tab */}
+      {activeTab === 'learners' && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold">Learners</h2>
+            <p className="text-sm text-gray-600 mt-1">Enrolled learners, participation, and learner information</p>
+          </div>
+          {enrollments.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p>No learners enrolled yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="pb-3 pr-4">Learner</th>
+                    <th className="pb-3 pr-4">Email</th>
+                    <th className="pb-3 pr-4">Progress</th>
+                    <th className="pb-3 pr-4">Status</th>
+                    <th className="pb-3 pr-4">Payment</th>
+                    <th className="pb-3">Enrolled</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {enrollments.map((e) => (
+                    <tr key={e.id}>
+                      <td className="py-3 pr-4 font-medium">{e.profiles?.full_name || '—'}</td>
+                      <td className="py-3 pr-4 text-gray-600">{e.profiles?.email || '—'}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${e.progress || 0}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500">{e.progress || 0}%</span>
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          e.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          e.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>{e.status}</span>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          e.payment_status === 'completed' || e.payment_status === 'not_required' ? 'bg-green-100 text-green-700' :
+                          e.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>{e.payment_status || '—'}</span>
+                      </td>
+                      <td className="py-3 text-gray-500 text-xs">
+                        {e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Progress Tab */}
+      {activeTab === 'progress' && (
+        <div className="space-y-6">
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Enrolled', value: enrollments.length },
+              { label: 'Completed', value: enrollments.filter(e => e.status === 'completed').length },
+              { label: 'In Progress', value: enrollments.filter(e => e.status === 'active' && (e.progress || 0) > 0).length },
+              { label: 'Avg. Progress', value: enrollments.length ? `${Math.round(enrollments.reduce((s, e) => s + (e.progress || 0), 0) / enrollments.length)}%` : '0%' },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-white rounded-lg shadow-md p-5 text-center">
+                <p className="text-3xl font-bold text-purple-600">{value}</p>
+                <p className="text-sm text-gray-600 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Learner progress table */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4">Lesson Completion per Learner</h2>
+            {enrollments.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No learners enrolled yet</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-500">
+                      <th className="pb-3 pr-4">Learner</th>
+                      <th className="pb-3 pr-4">Progress</th>
+                      <th className="pb-3 pr-4">Status</th>
+                      <th className="pb-3">Completed At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {enrollments.map((e) => (
+                      <tr key={e.id}>
+                        <td className="py-3 pr-4 font-medium">{e.profiles?.full_name || '—'}</td>
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-32 bg-gray-200 rounded-full h-2">
+                              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${e.progress || 0}%` }} />
+                            </div>
+                            <span className="text-xs font-semibold">{e.progress || 0}%</span>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            e.status === 'completed' ? 'bg-green-100 text-green-700' :
+                            e.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>{e.status}</span>
+                        </td>
+                        <td className="py-3 text-gray-500 text-xs">
+                          {e.completed_at ? new Date(e.completed_at).toLocaleDateString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Quiz scores */}
+          {quizAttempts.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4">Assessment Scores</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-500">
+                      <th className="pb-3 pr-4">Learner</th>
+                      <th className="pb-3 pr-4">Score</th>
+                      <th className="pb-3 pr-4">Result</th>
+                      <th className="pb-3">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {quizAttempts.map((a) => (
+                      <tr key={a.id}>
+                        <td className="py-3 pr-4 font-medium">{a.profiles?.full_name || '—'}</td>
+                        <td className="py-3 pr-4 font-semibold">{a.score}%</td>
+                        <td className="py-3 pr-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            a.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>{a.passed ? 'Passed' : 'Failed'}</span>
+                        </td>
+                        <td className="py-3 text-gray-500 text-xs">
+                          {a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Announcements Tab */}
+      {activeTab === 'announcements' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4">Post Announcement</h2>
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Announcement title..."
+                value={newAnnouncement.title}
+                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                className="w-full px-4 py-2 border rounded-md"
+              />
+              <textarea
+                rows={4}
+                placeholder="Write your announcement, reminder, or important update..."
+                value={newAnnouncement.message}
+                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, message: e.target.value })}
+                className="w-full px-4 py-2 border rounded-md"
+              />
+              <button
+                onClick={postAnnouncement}
+                disabled={postingAnnouncement || !newAnnouncement.title.trim() || !newAnnouncement.message.trim()}
+                className="px-6 py-2 bg-purple-600 text-white rounded-md font-semibold hover:bg-purple-700 disabled:opacity-50"
+              >
+                {postingAnnouncement ? 'Posting...' : 'Post Announcement'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4">Past Announcements</h2>
+            {announcements.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No announcements posted yet</p>
+            ) : (
+              <div className="space-y-4">
+                {announcements.map((a) => (
+                  <div key={a.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">{a.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{a.message}</p>
+                        <p className="text-xs text-gray-400 mt-2">{new Date(a.created_at).toLocaleString()}</p>
+                      </div>
+                      <button
+                        onClick={() => { if (confirm('Delete this announcement?')) supabase.from('course_announcements').delete().eq('id', a.id).then(() => loadCourse()); }}
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 ml-4"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

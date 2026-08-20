@@ -19,7 +19,9 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [enrollment, setEnrollment] = useState<any>(null);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -50,6 +52,14 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
     }
     if (courseResourcesRes.data) setCourseResources(courseResourcesRes.data);
     if (courseQuizzesRes.data) setCourseQuizzes(courseQuizzesRes.data);
+
+    const { data: announcementsData } = await supabase
+      .from('course_announcements')
+      .select('*')
+      .eq('course_id', id)
+      .order('created_at', { ascending: false });
+    if (announcementsData) setAnnouncements(announcementsData);
+
     setLoading(false);
   };
 
@@ -131,8 +141,21 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <div className="fixed inset-0 top-16 flex bg-white z-10">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-72 bg-gray-900 text-white flex flex-col overflow-hidden shrink-0">
+      <aside className={`
+        fixed lg:relative inset-y-0 left-0 z-30
+        w-72 bg-gray-900 text-white flex flex-col overflow-hidden shrink-0
+        transition-transform duration-300
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         <div className="p-4 border-b border-gray-700">
           <Link href={`/academy/courses/${id}`} className="text-xs text-gray-400 hover:text-white flex items-center gap-1 mb-2">
             ← Back to course
@@ -150,6 +173,18 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {announcements.length > 0 && (
+            <div className="border-b border-gray-700">
+              <p className="px-4 pt-3 pb-1 text-xs font-semibold text-yellow-400 uppercase tracking-wide">📢 Announcements</p>
+              {announcements.map((a) => (
+                <div key={a.id} className="px-4 py-2 border-b border-gray-800">
+                  <p className="text-xs font-semibold text-white">{a.title}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{a.message}</p>
+                  <p className="text-xs text-gray-600 mt-1">{new Date(a.created_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
           {lessons.length === 0 ? (
             <p className="p-4 text-sm text-gray-400">No lessons available yet.</p>
           ) : (
@@ -179,7 +214,7 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-gray-50 w-full lg:w-auto">
         {!activeLesson ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center p-8">
@@ -191,9 +226,17 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto px-6 py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+            {/* Mobile: toggle sidebar */}
+            <button
+              className="lg:hidden mb-4 flex items-center gap-2 text-sm text-purple-600 font-semibold"
+              onClick={() => setSidebarOpen(true)}
+            >
+              ☰ Lessons
+            </button>
+
             {/* Header */}
-            <div className="flex justify-between items-start mb-6 gap-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-3">
               <div>
                 <p className="text-sm text-purple-600 font-semibold mb-1">
                   Lesson {activeIdx + 1} of {lessons.length}
@@ -205,7 +248,7 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
               </div>
               <button
                 onClick={() => updateProgress(activeIdx)}
-                className="shrink-0 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700"
+                className="shrink-0 self-start px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700"
               >
                 Mark Complete ✓
               </button>
@@ -484,7 +527,7 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
             )}
 
             {/* Prev / Next */}
-            <div className="flex justify-between pt-2">
+            <div className="flex justify-between pt-2 gap-2">
               <button
                 onClick={() => activeIdx > 0 && setActiveLesson(lessons[activeIdx - 1])}
                 disabled={activeIdx === 0}
