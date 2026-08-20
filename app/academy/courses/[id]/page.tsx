@@ -21,6 +21,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [enrollmentStatus, setEnrollmentStatus] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -148,14 +149,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Breadcrumb */}
-      <div className="mb-6 text-sm text-gray-600">
+      <div className="mb-6 text-sm text-gray-600 flex flex-wrap gap-1 items-center">
         <Link href="/" className="hover:text-gray-900">Home</Link>
-        {' > '}
+        <span>&gt;</span>
         <Link href="/academy" className="hover:text-gray-900">Academy</Link>
-        {' > '}
+        <span>&gt;</span>
         <Link href="/academy/courses" className="hover:text-gray-900">Courses</Link>
-        {' > '}
-        <span className="text-gray-900">{course.title}</span>
+        <span>&gt;</span>
+        <span className="text-gray-900 truncate max-w-[200px] sm:max-w-none">{course.title}</span>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -166,7 +167,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold mb-4">
               {course.category}
             </span>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
             <div className="text-xl text-gray-600 prose max-w-none" dangerouslySetInnerHTML={{ __html: course.description }} />
           </div>
 
@@ -274,20 +275,38 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 <div>
                   {enrollmentStatus?.payment_status === 'pending' ? (
                     <div className="text-center">
-                      <div className="mb-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <svg className="w-12 h-12 text-yellow-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mb-3 p-4 rounded-lg" style={{ backgroundColor: '#EAB308' }}>
+                        <svg className="w-12 h-12 text-white mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p className="font-semibold text-yellow-900 mb-1">Payment Pending</p>
-                        <p className="text-sm text-yellow-700">
+                        <p className="font-semibold text-white mb-1">Payment Pending</p>
+                        <p className="text-sm text-white">
                           Your payment is being reviewed by admin. You'll get access once approved.
                         </p>
                       </div>
                       <button
                         disabled
-                        className="w-full px-6 py-3 bg-gray-300 text-gray-600 rounded-lg font-semibold cursor-not-allowed"
+                        className="w-full px-6 py-3 bg-gray-300 text-gray-600 rounded-lg font-semibold cursor-not-allowed mb-2"
                       >
                         Awaiting Payment Approval
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!user) return;
+                          setRefreshing(true);
+                          await checkEnrollment(user.id);
+                          setRefreshing(false);
+                        }}
+                        disabled={refreshing}
+                        className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <svg
+                          className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {refreshing ? 'Checking…' : 'Check Approval Status'}
                       </button>
                     </div>
                   ) : enrollmentStatus?.payment_status === 'rejected' ? (
@@ -308,7 +327,41 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                         Submit Payment Again
                       </button>
                     </div>
+                  ) : enrollmentStatus?.completed_at ? (
+                    /* ── Course completed ── */
+                    <div>
+                      <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <svg className="w-10 h-10 text-green-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        <p className="font-semibold text-green-900 mb-0.5">Course Completed!</p>
+                        <p className="text-xs text-green-700">
+                          {new Date(enrollmentStatus.completed_at).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/academy/certificates/${id}`}
+                        className="flex items-center justify-center gap-2 w-full px-6 py-3 text-white text-center rounded-lg font-semibold mb-3"
+                        style={{ backgroundColor: '#1992A3' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#147a8a'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1992A3'}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        View Certificate
+                      </Link>
+                      <Link
+                        href={`/academy/courses/${id}/learn`}
+                        className="block w-full px-6 py-3 text-center rounded-lg font-semibold text-purple-700 border border-purple-300 hover:bg-purple-50 text-sm"
+                      >
+                        Review Course
+                      </Link>
+                    </div>
                   ) : (
+                    /* ── Enrolled, not yet completed ── */
                     <div>
                       <Link
                         href={`/academy/courses/${id}/learn`}
@@ -317,7 +370,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#147a8a'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1992A3'}
                       >
-                        Start Learning →
+                        {enrollmentStatus?.progress > 0 ? `Continue Learning (${enrollmentStatus.progress}%)` : 'Start Learning →'}
                       </Link>
                       <p className="text-sm text-center text-green-600 font-semibold">
                         ✓ You're enrolled in this course

@@ -1,7 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import RichTextEditor from './RichTextEditor';
+
+interface CourseCategory {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface EnhancedCourseFormProps {
   formData: any;
@@ -32,7 +38,15 @@ export default function EnhancedCourseForm({
   featuredImage,
   setFeaturedImage,
 }: EnhancedCourseFormProps) {
+  const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [learningOutcome, setLearningOutcome] = useState('');
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then(json => { if (json.categories) setCategories(json.categories); })
+      .catch(() => {/* silently fall back to empty list */});
+  }, []);
   const [currentResource, setCurrentResource] = useState({
     title: '',
     description: '',
@@ -205,12 +219,10 @@ export default function EnhancedCourseForm({
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
-                  <option value="Caregiver Training">Caregiver Training</option>
-                  <option value="Nursing Skills">Nursing Skills</option>
-                  <option value="Health & Safety">Health & Safety</option>
-                  <option value="Communication">Communication</option>
-                  <option value="Career Development">Career Development</option>
-                  <option value="Specialized Care">Specialized Care</option>
+                  <option value="">Select a category…</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                  ))}
                 </select>
               </div>
 

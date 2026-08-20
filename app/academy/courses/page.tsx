@@ -11,6 +11,7 @@ function CoursesContent() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [user, setUser] = useState<any>(null);
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
   const searchParams = useSearchParams();
   const supabase = createBrowserClient();
 
@@ -19,6 +20,12 @@ function CoursesContent() {
     const category = searchParams?.get('category');
     if (category) setFilter(category);
     loadCourses();
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then(json => {
+        if (json.categories) setCategoryNames(json.categories.map((c: any) => c.name));
+      })
+      .catch(() => {});
   }, [searchParams]);
 
   const checkUser = async () => {
@@ -53,16 +60,6 @@ function CoursesContent() {
   useEffect(() => {
     loadCourses();
   }, [filter]);
-
-  const categories = [
-    'All Courses',
-    'Caregiver Training',
-    'Nursing Skills',
-    'Health & Safety',
-    'Communication',
-    'Career Development',
-    'Specialized Care'
-  ];
 
   // Helper function to strip HTML and decode entities for preview text
   const getPlainTextPreview = (html: string, maxLength: number = 150): string => {
@@ -105,17 +102,23 @@ function CoursesContent() {
       {/* Filter */}
       <div className="mb-8">
         <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+              filter === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            All Courses
+          </button>
+          {categoryNames.map((name) => (
             <button
-              key={category}
-              onClick={() => setFilter(category === 'All Courses' ? 'all' : category)}
+              key={name}
+              onClick={() => setFilter(name)}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-                (filter === 'all' && category === 'All Courses') || filter === category
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                filter === name ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {category}
+              {name}
             </button>
           ))}
         </div>
