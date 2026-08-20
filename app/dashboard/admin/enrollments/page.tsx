@@ -154,8 +154,9 @@ export default function AdminEnrollmentsPage() {
       setSelectedEnrollment(null);
       loadEnrollments();
     } catch (error: any) {
-      console.error('Error approving payment:', error);
-      alert(`Failed to approve payment: ${error.message}`);
+      const msg = error?.message || error?.details || error?.hint || error?.code || JSON.stringify(error);
+      console.error('Error approving payment:', { message: error?.message, details: error?.details, hint: error?.hint, code: error?.code });
+      alert(`Failed to approve payment: ${msg}`);
     } finally {
       setProcessing(false);
     }
@@ -197,8 +198,9 @@ export default function AdminEnrollmentsPage() {
       setRejectionReason('');
       loadEnrollments();
     } catch (error: any) {
-      console.error('Error rejecting payment:', error);
-      alert(`Failed to reject payment: ${error.message}`);
+      const msg = error?.message || error?.details || error?.hint || error?.code || JSON.stringify(error);
+      console.error('Error rejecting payment:', { message: error?.message, details: error?.details, hint: error?.hint, code: error?.code });
+      alert(`Failed to reject payment: ${msg}`);
     } finally {
       setProcessing(false);
     }

@@ -36,6 +36,13 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
       .eq('user_id', session.user.id).eq('course_id', id).single();
 
     if (!enroll) { router.push(`/academy/courses/${id}`); return; }
+
+    // Block access if payment is still pending / not yet approved
+    if (enroll.can_access === false) {
+      router.push(`/academy/courses/${id}`);
+      return;
+    }
+
     setEnrollment(enroll);
 
     const [courseRes, lessonsRes, courseResourcesRes, courseQuizzesRes] = await Promise.all([
@@ -541,13 +548,14 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
                     updateProgress(activeIdx);
                     setActiveLesson(lessons[activeIdx + 1]);
                   } else {
-                    // Last lesson - complete the course
+                    // Last lesson — mark course complete then go to certificate
                     await updateProgress(activeIdx);
-                    await supabase.from('enrollments').update({ 
+                    const completedAt = new Date().toISOString();
+                    await supabase.from('enrollments').update({
                       completed: true,
-                      completed_at: new Date().toISOString()
+                      completed_at: completedAt,
                     }).eq('id', enrollment.id);
-                    router.push(`/academy/courses/${id}`);
+                    router.push(`/academy/certificates/${id}`);
                   }
                 }}
                 className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"

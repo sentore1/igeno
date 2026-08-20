@@ -331,6 +331,30 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
                 className="w-full px-4 py-2 border rounded-md"
               />
             </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Certificate Title</label>
+                <input
+                  type="text"
+                  value={course.certificate_title || ''}
+                  onChange={(e) => setCourse({ ...course, certificate_title: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-md"
+                  placeholder="e.g., CAREGIVER CERTIFICATE"
+                />
+                <p className="text-xs text-gray-500 mt-1">Displayed as the main heading on the certificate</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Certificate Subtitle</label>
+                <input
+                  type="text"
+                  value={course.certificate_subtitle || ''}
+                  onChange={(e) => setCourse({ ...course, certificate_subtitle: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-md"
+                  placeholder="e.g., Professional Caregiver Training Program"
+                />
+                <p className="text-xs text-gray-500 mt-1">Displayed below the certificate title</p>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Introduction</label>
               <textarea
