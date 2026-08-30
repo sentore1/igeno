@@ -46,7 +46,7 @@ export default function CertificatePage({ params }: { params: Promise<{ courseId
         supabase.from('courses').select('title, category, description, certificate_title, certificate_subtitle').eq('id', courseId).single(),
         supabase
           .from('enrollments')
-          .select('completed_at, created_at, can_access, payment_status')
+          .select('completed_at, created_at, can_access, payment_status, progress')
           .eq('user_id', userId)
           .eq('course_id', courseId)
           .single(),
