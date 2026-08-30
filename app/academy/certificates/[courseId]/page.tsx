@@ -69,7 +69,51 @@ export default function CertificatePage({ params }: { params: Promise<{ courseId
         return;
       }
 
-      // 4. Populate state
+      // 4. Guard: all lessons must be completed (progress = 100)
+      if ((enrollmentRes.data.progress ?? 0) < 100) {
+        setError("You haven't finished all lessons yet. Complete every lesson before accessing your certificate.");
+        setLoading(false);
+        return;
+      }
+
+      // 5. Guard: all required quizzes must be passed
+      const [requiredQuizzesRes, lessonQuizzesRes, passedAttemptsRes] = await Promise.all([
+        supabase
+          .from('course_quizzes')
+          .select('id, title')
+          .eq('course_id', courseId)
+          .eq('is_required', true),
+        supabase
+          .from('quizzes')
+          .select('id, title, lesson_id')
+          .in('lesson_id', (lessonsRes.data || []).map((l: any) => l.id)),
+        supabase
+          .from('quiz_attempts')
+          .select('quiz_id')
+          .eq('user_id', userId)
+          .eq('passed', true),
+      ]);
+
+      const passedIds = new Set((passedAttemptsRes.data || []).map((a: any) => a.quiz_id));
+
+      const failedRequiredCourse = (requiredQuizzesRes.data || []).filter(
+        (q: any) => !passedIds.has(q.id)
+      );
+      const failedLessonQuizzes = (lessonQuizzesRes.data || []).filter(
+        (q: any) => !passedIds.has(q.id)
+      );
+
+      if (failedRequiredCourse.length > 0 || failedLessonQuizzes.length > 0) {
+        const total = failedRequiredCourse.length + failedLessonQuizzes.length;
+        setError(
+          `You have ${total} quiz${total > 1 ? 'zes' : ''} that ${total > 1 ? 'have' : 'has'} not been passed yet. ` +
+          `Please go back and pass all required quizzes before accessing your certificate.`
+        );
+        setLoading(false);
+        return;
+      }
+
+      // 6. Populate state
       setStudentName(profileRes.data?.full_name || session.user.email || 'Student');
       setCourseTitle(courseRes.data?.title || 'Course');
       setCourseDescription(courseRes.data?.description || '');
@@ -84,7 +128,7 @@ export default function CertificatePage({ params }: { params: Promise<{ courseId
         }))
       );
 
-      // 5. Check/create certificate record
+      // 7. Check/create certificate record
       await upsertCertificate(
         userId,
         courseId,
@@ -179,19 +223,27 @@ export default function CertificatePage({ params }: { params: Promise<{ courseId
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Certificate Unavailable</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Certificate Not Available Yet</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Link
-            href={`/academy/courses/${courseId}`}
-            className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
-          >
-            Back to Course
-          </Link>
+          <div className="flex flex-col gap-3">
+            <Link
+              href={`/academy/courses/${courseId}/learn`}
+              className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
+            >
+              Continue Learning →
+            </Link>
+            <Link
+              href={`/academy/courses/${courseId}`}
+              className="inline-block px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50"
+            >
+              Back to Course
+            </Link>
+          </div>
         </div>
       </div>
     );
