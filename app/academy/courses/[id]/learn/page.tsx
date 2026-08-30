@@ -18,6 +18,10 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
+  // Track which quiz IDs the user has passed
+  const [passedQuizIds, setPassedQuizIds] = useState<Set<string>>(new Set());
+  // Track which lesson indices have been marked complete
+  const [completedLessonIndices, setCompletedLessonIndices] = useState<Set<number>>(new Set());
   const [enrollment, setEnrollment] = useState<any>(null);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,9 +60,27 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
     if (lessonsRes.data) {
       setLessons(lessonsRes.data);
       if (lessonsRes.data.length > 0) setActiveLesson(lessonsRes.data[0]);
+
+      // Restore completed lesson indices from saved progress
+      if (enroll.progress && enroll.progress > 0 && lessonsRes.data.length > 0) {
+        const doneCount = Math.round((enroll.progress / 100) * lessonsRes.data.length);
+        const doneSet = new Set<number>();
+        for (let i = 0; i < doneCount; i++) doneSet.add(i);
+        setCompletedLessonIndices(doneSet);
+      }
     }
     if (courseResourcesRes.data) setCourseResources(courseResourcesRes.data);
     if (courseQuizzesRes.data) setCourseQuizzes(courseQuizzesRes.data);
+
+    // Load previously passed quizzes for this user
+    const { data: attempts } = await supabase
+      .from('quiz_attempts')
+      .select('quiz_id, passed')
+      .eq('user_id', session.user.id)
+      .eq('passed', true);
+    if (attempts) {
+      setPassedQuizIds(new Set(attempts.map((a: any) => a.quiz_id)));
+    }
 
     const { data: announcementsData } = await supabase
       .from('course_announcements')
@@ -84,10 +106,40 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
 
   const updateProgress = async (lessonIndex: number) => {
     if (!enrollment || lessons.length === 0) return;
+    // Mark this lesson index as completed
+    setCompletedLessonIndices(prev => new Set(prev).add(lessonIndex));
     const newProgress = Math.round(((lessonIndex + 1) / lessons.length) * 100);
     if (newProgress <= (enrollment.progress || 0)) return;
     await supabase.from('enrollments').update({ progress: newProgress }).eq('id', enrollment.id);
     setEnrollment({ ...enrollment, progress: newProgress });
+  };
+
+  /** Returns a list of unmet requirements, empty array means eligible */
+  const getCompletionBlockers = (): string[] => {
+    const blockers: string[] = [];
+
+    // Check all lessons completed
+    const allLessonsDone = lessons.every((_, i) => completedLessonIndices.has(i));
+    if (!allLessonsDone) {
+      const remaining = lessons.length - completedLessonIndices.size;
+      blockers.push(`${remaining} lesson${remaining > 1 ? 's' : ''} not yet completed`);
+    }
+
+    // Check all required quizzes passed
+    const requiredCourseQuizzes = courseQuizzes.filter((q: any) => q.is_required);
+    const failedRequired = requiredCourseQuizzes.filter((q: any) => !passedQuizIds.has(q.id));
+    if (failedRequired.length > 0) {
+      blockers.push(`${failedRequired.length} required quiz${failedRequired.length > 1 ? 'zes' : ''} not yet passed`);
+    }
+
+    // Check lesson quizzes — all lesson quizzes are treated as required
+    const allLessonQuizIds = lessonQuizzes.map((q: any) => q.id);
+    const failedLessonQuizzes = allLessonQuizIds.filter((qid: string) => !passedQuizIds.has(qid));
+    if (failedLessonQuizzes.length > 0) {
+      blockers.push(`${failedLessonQuizzes.length} lesson quiz${failedLessonQuizzes.length > 1 ? 'zes' : ''} not yet passed`);
+    }
+
+    return blockers;
   };
 
   const getYoutubeEmbed = (url: string) => {
@@ -115,6 +167,8 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
     setQuizScore(score);
     setQuizSubmitted(true);
 
+    const passed = score >= (activeQuiz.passing_score || 70);
+
     // Save quiz attempt
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
@@ -123,8 +177,13 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
         user_id: session.user.id,
         score: score,
         answers: quizAnswers,
-        passed: score >= (activeQuiz.passing_score || 70),
+        passed,
       });
+
+      // Update local passed set if passed
+      if (passed) {
+        setPassedQuizIds(prev => new Set(prev).add(activeQuiz.id));
+      }
     }
   };
 
@@ -145,6 +204,7 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
 
   const activeIdx = lessons.findIndex(l => l.id === activeLesson?.id);
   const progressPct = enrollment?.progress || 0;
+  const completionBlockers = getCompletionBlockers();
 
   return (
     <div className="fixed inset-0 top-16 flex bg-white z-10">
@@ -255,9 +315,14 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
               </div>
               <button
                 onClick={() => updateProgress(activeIdx)}
-                className="shrink-0 self-start px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700"
+                disabled={completedLessonIndices.has(activeIdx)}
+                className={`shrink-0 self-start px-4 py-2 rounded-lg text-sm font-semibold ${
+                  completedLessonIndices.has(activeIdx)
+                    ? 'bg-green-100 text-green-700 cursor-default'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
               >
-                Mark Complete ✓
+                {completedLessonIndices.has(activeIdx) ? '✓ Completed' : 'Mark Complete ✓'}
               </button>
             </div>
 
@@ -534,34 +599,63 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
             )}
 
             {/* Prev / Next */}
-            <div className="flex justify-between pt-2 gap-2">
-              <button
-                onClick={() => activeIdx > 0 && setActiveLesson(lessons[activeIdx - 1])}
-                disabled={activeIdx === 0}
-                className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                ← Previous
-              </button>
-              <button
-                onClick={async () => {
-                  if (activeIdx < lessons.length - 1) {
-                    updateProgress(activeIdx);
-                    setActiveLesson(lessons[activeIdx + 1]);
-                  } else {
-                    // Last lesson — mark course complete then go to certificate
-                    await updateProgress(activeIdx);
-                    const completedAt = new Date().toISOString();
-                    await supabase.from('enrollments').update({
-                      completed: true,
-                      completed_at: completedAt,
-                    }).eq('id', enrollment.id);
-                    router.push(`/academy/certificates/${id}`);
-                  }
-                }}
-                className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"
-              >
-                {activeIdx === lessons.length - 1 ? 'Submit Course' : 'Next →'}
-              </button>
+            <div className="flex flex-col gap-3 pt-2">
+              <div className="flex justify-between gap-2">
+                <button
+                  onClick={() => activeIdx > 0 && setActiveLesson(lessons[activeIdx - 1])}
+                  disabled={activeIdx === 0}
+                  className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ← Previous
+                </button>
+                {activeIdx < lessons.length - 1 ? (
+                  <button
+                    onClick={() => {
+                      updateProgress(activeIdx);
+                      setActiveLesson(lessons[activeIdx + 1]);
+                    }}
+                    className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"
+                  >
+                    Next →
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (completionBlockers.length > 0) return; // guard — button disabled anyway
+                      await updateProgress(activeIdx);
+                      const completedAt = new Date().toISOString();
+                      await supabase.from('enrollments').update({
+                        completed: true,
+                        completed_at: completedAt,
+                        progress: 100,
+                      }).eq('id', enrollment.id);
+                      router.push(`/academy/certificates/${id}`);
+                    }}
+                    disabled={completionBlockers.length > 0}
+                    title={completionBlockers.length > 0 ? completionBlockers.join(' • ') : 'Submit and get your certificate'}
+                    className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Submit Course
+                  </button>
+                )}
+              </div>
+
+              {/* Show blockers when on last lesson */}
+              {activeIdx === lessons.length - 1 && completionBlockers.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-yellow-800 mb-2">
+                    Complete the following before submitting:
+                  </p>
+                  <ul className="space-y-1">
+                    {completionBlockers.map((b, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-yellow-700">
+                        <span className="text-yellow-500">⚠</span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         )}

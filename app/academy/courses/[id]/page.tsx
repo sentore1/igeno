@@ -168,7 +168,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               {course.category}
             </span>
             <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
-            <div className="text-xl text-gray-600 prose max-w-none" dangerouslySetInnerHTML={{ __html: course.description }} />
           </div>
 
           {/* Course Image */}

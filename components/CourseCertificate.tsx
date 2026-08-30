@@ -153,14 +153,12 @@ export default function CourseCertificate({
             </div>
           )}
 
-          {/* Date range row — sits just below "This is to certify that" */}
+          {/* Issued date — sits just below "This is to certify that" */}
           <div
             className="absolute text-center w-full"
             style={{ top: '20%', fontSize: 'clamp(8px, 1.3vw, 14px)', color: '#1a1a1a' }}
           >
-            {formattedEnrollment
-              ? `from ${formattedEnrollment} to ${formattedCompletion}`
-              : `Completed on ${formattedCompletion}`}
+            {formattedCompletion}
           </div>
 
           {/* "This certificate certifies that" — above the name */}
