@@ -22,7 +22,12 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
   const [postingAnnouncement, setPostingAnnouncement] = useState(false);
-  
+
+  // Featured image
+  const [featuredImage, setFeaturedImage] = useState<File | null>(null);
+  const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   // Form states
   const [showAddLesson, setShowAddLesson] = useState(false);
   const [showAddResource, setShowAddResource] = useState(false);
@@ -127,6 +132,34 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
 
   const updateCourse = async (updates: any) => {
     setSaving(true);
+
+    // If a new image file was selected, upload it first
+    if (featuredImage) {
+      setUploadingImage(true);
+      const ext = featuredImage.name.split('.').pop();
+      const filePath = `featured-images/course-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('course-images')
+        .upload(filePath, featuredImage, { upsert: true });
+
+      if (uploadError) {
+        alert(`Image upload failed: ${uploadError.message}`);
+        setUploadingImage(false);
+        setSaving(false);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('course-images')
+        .getPublicUrl(filePath);
+
+      updates = { ...updates, featured_image_url: publicUrl };
+      setFeaturedImage(null);
+      setFeaturedImagePreview(null);
+      setUploadingImage(false);
+    }
+
     const { error } = await supabase
       .from('courses')
       .update(updates)
@@ -427,6 +460,77 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
                 className="w-full px-4 py-2 border rounded-md"
               />
             </div>
+            {/* Featured Image */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                {/* Preview */}
+                <div className="w-48 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center bg-gray-50 shrink-0">
+                  {featuredImagePreview || course.featured_image_url ? (
+                    <img
+                      src={featuredImagePreview ?? course.featured_image_url}
+                      alt="Featured image preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-center p-2">
+                      <svg className="w-10 h-10 text-gray-400 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-xs text-gray-400">No image</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Controls */}
+                <div className="flex flex-col gap-2">
+                  <label className="cursor-pointer px-4 py-2 bg-purple-100 text-purple-700 rounded-md text-sm font-medium hover:bg-purple-200 transition-colors inline-flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    {course.featured_image_url || featuredImagePreview ? 'Replace Image' : 'Upload Image'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert('Image must be smaller than 5 MB.');
+                          return;
+                        }
+                        setFeaturedImage(file);
+                        setFeaturedImagePreview(URL.createObjectURL(file));
+                      }}
+                    />
+                  </label>
+
+                  {(featuredImagePreview || course.featured_image_url) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFeaturedImage(null);
+                        setFeaturedImagePreview(null);
+                        setCourse({ ...course, featured_image_url: '' });
+                      }}
+                      className="px-4 py-2 bg-red-100 text-red-700 rounded-md text-sm font-medium hover:bg-red-200 transition-colors inline-flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Remove Image
+                    </button>
+                  )}
+
+                  <p className="text-xs text-gray-500">PNG, JPG, GIF or WebP · max 5 MB</p>
+                  {featuredImagePreview && (
+                    <p className="text-xs text-amber-600 font-medium">New image selected — click Save Changes to upload.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -441,10 +545,10 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
             </div>
             <button
               onClick={() => updateCourse(course)}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               className="px-6 py-3 bg-purple-600 text-white rounded-md font-semibold hover:bg-purple-700 disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {uploadingImage ? 'Uploading image...' : saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
