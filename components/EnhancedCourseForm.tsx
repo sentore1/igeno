@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import RichTextEditor from './RichTextEditor';
+import { createBrowserClient } from '@/lib/supabase-client';
 
 interface CourseCategory {
   id: string;
@@ -54,6 +55,10 @@ export default function EnhancedCourseForm({
     resource_url: '',
     is_downloadable: true,
   });
+  const [resourceFile, setResourceFile] = useState<File | null>(null);
+  const [uploadingResource, setUploadingResource] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createBrowserClient();
   const [currentQuiz, setCurrentQuiz] = useState({
     title: '',
     description: '',
@@ -76,17 +81,39 @@ export default function EnhancedCourseForm({
     }
   };
 
-  const addResource = () => {
-    if (currentResource.title && currentResource.resource_url) {
-      setResources([...resources, currentResource]);
-      setCurrentResource({
-        title: '',
-        description: '',
-        resource_type: 'pdf',
-        resource_url: '',
-        is_downloadable: true,
-      });
+  const addResource = async () => {
+    if (!currentResource.title) return;
+
+    let resourceUrl = currentResource.resource_url;
+
+    if (resourceFile) {
+      setUploadingResource(true);
+      try {
+        const ext = resourceFile.name.split('.').pop();
+        const path = `resources/${Date.now()}-${resourceFile.name}`;
+        const { error } = await supabase.storage
+          .from('course-files')
+          .upload(path, resourceFile);
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage
+          .from('course-files')
+          .getPublicUrl(path);
+        resourceUrl = publicUrl;
+      } catch (err: any) {
+        alert(`Upload failed: ${err.message}`);
+        setUploadingResource(false);
+        return;
+      } finally {
+        setUploadingResource(false);
+      }
     }
+
+    if (!resourceUrl) return;
+
+    setResources([...resources, { ...currentResource, resource_url: resourceUrl }]);
+    setCurrentResource({ title: '', description: '', resource_type: 'pdf', resource_url: '', is_downloadable: true });
+    setResourceFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const addQuestion = () => {
@@ -453,32 +480,60 @@ export default function EnhancedCourseForm({
                   <select
                     className="w-full px-3 py-2 border rounded-lg"
                     value={currentResource.resource_type}
-                    onChange={(e) => setCurrentResource({ ...currentResource, resource_type: e.target.value })}
+                    onChange={(e) => {
+                      setCurrentResource({ ...currentResource, resource_type: e.target.value, resource_url: '' });
+                      setResourceFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
                   >
                     <option value="pdf">PDF Document</option>
-                    <option value="video">Video (YouTube/Vimeo)</option>
+                    <option value="image">Image (PNG/JPG)</option>
+                    <option value="document">Document (Word/Excel)</option>
+                    <option value="video">Video (YouTube/Vimeo link)</option>
                     <option value="link">External Link</option>
-                    <option value="document">Document</option>
                     <option value="other">Other</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Resource URL * 
-                    {currentResource.resource_type === 'video' && ' (YouTube/Vimeo link)'}
-                  </label>
-                  <input
-                    type="url"
-                    className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="https://..."
-                    value={currentResource.resource_url}
-                    onChange={(e) => setCurrentResource({ ...currentResource, resource_url: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Provide direct link to PDF, video, or other resource
-                  </p>
-                </div>
+                {/* File upload for pdf, image, document, other */}
+                {['pdf', 'image', 'document', 'other'].includes(currentResource.resource_type) ? (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Upload File *</label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={
+                        currentResource.resource_type === 'pdf' ? '.pdf' :
+                        currentResource.resource_type === 'image' ? 'image/*' :
+                        currentResource.resource_type === 'document' ? '.doc,.docx,.xls,.xlsx,.ppt,.pptx' :
+                        '*/*'
+                      }
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setResourceFile(file);
+                        if (file) setCurrentResource({ ...currentResource, resource_url: file.name });
+                      }}
+                    />
+                    {resourceFile && (
+                      <p className="text-xs text-green-600 mt-1">✓ {resourceFile.name} ({(resourceFile.size / 1024).toFixed(1)} KB)</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">File will be uploaded to secure storage</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {currentResource.resource_type === 'video' ? 'Video URL (YouTube/Vimeo) *' : 'URL *'}
+                    </label>
+                    <input
+                      type="url"
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="https://..."
+                      value={currentResource.resource_url}
+                      onChange={(e) => setCurrentResource({ ...currentResource, resource_url: e.target.value })}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium mb-1">Description</label>
@@ -504,9 +559,10 @@ export default function EnhancedCourseForm({
                 <button
                   type="button"
                   onClick={addResource}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={uploadingResource || !currentResource.title || (!resourceFile && !currentResource.resource_url)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Add Resource
+                  {uploadingResource ? 'Uploading...' : 'Add Resource'}
                 </button>
               </div>
             </div>

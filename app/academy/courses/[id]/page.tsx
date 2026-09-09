@@ -168,6 +168,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               {course.category}
             </span>
             <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
+            {(course as any).introduction && (
+              <p className="text-gray-600 text-base leading-relaxed">{(course as any).introduction}</p>
+            )}
           </div>
 
           {/* Course Image */}

@@ -438,11 +438,11 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
 
-            {/* Course Quizzes (available for all lessons) */}
-            {courseQuizzes.length > 0 && !activeQuiz && (
+            {/* Course Quizzes (only shown on the last lesson) */}
+            {courseQuizzes.length > 0 && !activeQuiz && activeIdx === lessons.length - 1 && (
               <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h3 className="font-bold mb-4 text-gray-900">Course Quizzes</h3>
-                <p className="text-sm text-gray-600 mb-4">Test your knowledge with these assessments</p>
+                <h3 className="font-bold mb-4 text-gray-900">Final Assessments</h3>
+                <p className="text-sm text-gray-600 mb-4">Complete these assessments to finish the course</p>
                 <div className="space-y-3">
                   {courseQuizzes.map((quiz: any) => (
                     <div key={quiz.id} className="border rounded-lg p-4 hover:border-purple-300 transition">
