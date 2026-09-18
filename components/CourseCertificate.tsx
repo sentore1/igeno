@@ -192,11 +192,27 @@ export default function CourseCertificate({
             {studentName}
           </div>
 
-          {/* Course title — short subtitle below the name */}
+          {/* "COMPLETED THE COURSE OF" — between name and course title */}
           <div
             className="absolute text-center w-full"
             style={{
               top: '37%',
+              fontSize: 'clamp(6px, 0.95vw, 11px)',
+              fontFamily: 'Arial, sans-serif',
+              fontWeight: '600',
+              color: '#555',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Completed the Course of
+          </div>
+
+          {/* Course title — short subtitle below the "completed" line */}
+          <div
+            className="absolute text-center w-full"
+            style={{
+              top: '41%',
               fontSize: 'clamp(7px, 1.1vw, 13px)',
               fontFamily: 'Arial, sans-serif',
               fontWeight: '600',
@@ -210,12 +226,12 @@ export default function CourseCertificate({
             {courseTitle}
           </div>
 
-          {/* Certificate subtitle — below the student name */}
+          {/* Certificate subtitle — below the course title */}
           {certificateSubtitle && (
             <div
               className="absolute text-center w-full"
               style={{
-                top: '40%',
+                top: '45%',
                 fontSize: 'clamp(8px, 1.2vw, 14px)',
                 fontFamily: 'Georgia, serif',
                 fontStyle: 'italic',
@@ -233,7 +249,7 @@ export default function CourseCertificate({
           <div
             className="absolute"
             style={{
-              top: '45%',
+              top: '49%',
               left: '4%',
               right: '4%',
               bottom: '22%',
