@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@/lib/supabase-client';
@@ -27,6 +27,25 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
   const [featuredImage, setFeaturedImage] = useState<File | null>(null);
   const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Course-level resource modal
+  const [showAddCourseResource, setShowAddCourseResource] = useState(false);
+  const [courseResourceForm, setCourseResourceForm] = useState({
+    title: '',
+    description: '',
+    resource_type: 'pdf' as 'pdf' | 'video' | 'link' | 'document' | 'other',
+    resource_url: '',
+    is_downloadable: true,
+  });
+  const [courseResourceFile, setCourseResourceFile] = useState<File | null>(null);
+  const [uploadingCourseResource, setUploadingCourseResource] = useState(false);
+  const courseResourceFileRef = useRef<HTMLInputElement>(null);
+
+  // Lesson-level resource modal upload state
+  const [lessonResourceFile, setLessonResourceFile] = useState<File | null>(null);
+  const [lessonResourceUploadMode, setLessonResourceUploadMode] = useState<'file' | 'url'>('file');
+  const [uploadingLessonResource, setUploadingLessonResource] = useState(false);
+  const lessonResourceFileRef = useRef<HTMLInputElement>(null);
 
   // Form states
   const [showAddLesson, setShowAddLesson] = useState(false);
@@ -211,25 +230,108 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  const addCourseResource = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseResourceForm.title) return;
+
+    let resourceUrl = courseResourceForm.resource_url;
+
+    if (courseResourceFile) {
+      setUploadingCourseResource(true);
+      try {
+        const path = `resources/${Date.now()}-${courseResourceFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('course-files')
+          .upload(path, courseResourceFile);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage
+          .from('course-files')
+          .getPublicUrl(path);
+        resourceUrl = publicUrl;
+      } catch (err: any) {
+        alert(`Upload failed: ${err.message}`);
+        setUploadingCourseResource(false);
+        return;
+      } finally {
+        setUploadingCourseResource(false);
+      }
+    }
+
+    if (!resourceUrl) {
+      alert('Please select a file to upload or enter a URL.');
+      return;
+    }
+
+    const { error } = await supabase.from('course_resources').insert({
+      course_id: id,
+      title: courseResourceForm.title,
+      description: courseResourceForm.description || null,
+      resource_type: courseResourceForm.resource_type,
+      resource_url: resourceUrl,
+      is_downloadable: courseResourceForm.is_downloadable,
+      order_index: courseResources.length,
+    });
+
+    if (error) {
+      alert(`Failed to add resource: ${error.message}`);
+    } else {
+      setCourseResourceForm({ title: '', description: '', resource_type: 'pdf', resource_url: '', is_downloadable: true });
+      setCourseResourceFile(null);
+      if (courseResourceFileRef.current) courseResourceFileRef.current.value = '';
+      setShowAddCourseResource(false);
+      loadCourse();
+    }
+  };
+
   const addResource = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
 
+    let fileUrl = formData.get('file_url') as string;
+
+    if (lessonResourceUploadMode === 'file' && lessonResourceFile) {
+      setUploadingLessonResource(true);
+      try {
+        const path = `lesson-resources/${Date.now()}-${lessonResourceFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('course-files')
+          .upload(path, lessonResourceFile);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage
+          .from('course-files')
+          .getPublicUrl(path);
+        fileUrl = publicUrl;
+      } catch (err: any) {
+        alert(`Upload failed: ${err.message}`);
+        setUploadingLessonResource(false);
+        return;
+      } finally {
+        setUploadingLessonResource(false);
+      }
+    }
+
+    if (!fileUrl) {
+      alert('Please select a file to upload or enter a URL.');
+      return;
+    }
+
     const { error } = await supabase.from('resources').insert({
       lesson_id: selectedLesson,
       title: formData.get('title'),
-      file_url: formData.get('file_url'),
+      file_url: fileUrl,
       file_type: formData.get('file_type'),
     });
 
     if (error) {
       alert(`Failed to add resource: ${error.message}`);
     } else {
-      alert('Resource added successfully!');
       form.reset();
+      setLessonResourceFile(null);
+      if (lessonResourceFileRef.current) lessonResourceFileRef.current.value = '';
+      setLessonResourceUploadMode('file');
       setShowAddResource(false);
-      loadCourse(); // Reload to show the new resource
+      loadCourse();
     }
   };
 
@@ -560,27 +662,10 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
           <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-xl font-bold">Course Resources</h2>
-              <p className="text-sm text-gray-600 mt-1">PDFs, videos, and documents for the entire course</p>
+              <p className="text-sm text-gray-600 mt-1">PDFs, images, videos, and documents for the entire course</p>
             </div>
             <button
-              onClick={() => {
-                const title = prompt('Resource Title:');
-                if (!title) return;
-                const url = prompt('Resource URL:');
-                if (!url) return;
-                const type = prompt('Resource Type (pdf, video, link, document, other):') || 'pdf';
-                
-                supabase.from('course_resources').insert({
-                  course_id: id,
-                  title,
-                  resource_url: url,
-                  resource_type: type,
-                  order_index: courseResources.length
-                }).then(({ error }) => {
-                  if (error) alert(`Error: ${error.message}`);
-                  else loadCourse();
-                });
-              }}
+              onClick={() => setShowAddCourseResource(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -601,12 +686,22 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
             <div className="space-y-3">
               {courseResources.map((resource) => (
                 <div key={resource.id} className="border rounded-lg p-4 flex justify-between items-start">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold">{resource.title}</h3>
-                    <p className="text-sm text-gray-600">{resource.description}</p>
-                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">{resource.resource_type}</span>
-                      <a href={resource.resource_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    {resource.description && <p className="text-sm text-gray-600 mt-0.5">{resource.description}</p>}
+                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 flex-wrap">
+                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium uppercase">
+                        {resource.resource_type}
+                      </span>
+                      {resource.is_downloadable && (
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Downloadable</span>
+                      )}
+                      <a
+                        href={resource.resource_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline truncate max-w-xs"
+                      >
                         View Resource →
                       </a>
                     </div>
@@ -617,7 +712,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
                         supabase.from('course_resources').delete().eq('id', resource.id).then(() => loadCourse());
                       }
                     }}
-                    className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200"
+                    className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 shrink-0"
                   >
                     Delete
                   </button>
@@ -1225,14 +1320,21 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* Add Resource Modal */}
+      {/* Add Resource Modal (lesson-level) */}
       {showAddResource && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-lg w-full">
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Add Resource</h2>
-                <button onClick={() => setShowAddResource(false)} className="text-gray-500 hover:text-gray-700">
+                <h2 className="text-xl font-bold">Add Lesson Resource</h2>
+                <button
+                  onClick={() => {
+                    setShowAddResource(false);
+                    setLessonResourceFile(null);
+                    setLessonResourceUploadMode('file');
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -1242,27 +1344,150 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
             <form onSubmit={addResource} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Resource Title *</label>
-                <input type="text" name="title" required className="w-full px-4 py-2 border rounded-md" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">File URL *</label>
-                <input type="url" name="file_url" required className="w-full px-4 py-2 border rounded-md" placeholder="https://..." />
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Week 1 Reading Material"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">File Type *</label>
-                <select name="file_type" required className="w-full px-4 py-2 border rounded-md">
+                <select name="file_type" required className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500">
                   <option value="PDF">PDF</option>
                   <option value="Document">Document</option>
-                  <option value="Video">Video</option>
                   <option value="Image">Image</option>
+                  <option value="Video">Video</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div className="flex gap-4">
-                <button type="submit" className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700">
-                  Add Resource
+
+              {/* Upload mode toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Add File Via</label>
+                <div className="flex rounded-md border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => { setLessonResourceUploadMode('file'); setLessonResourceFile(null); }}
+                    className={`flex-1 py-2 text-sm font-medium transition ${
+                      lessonResourceUploadMode === 'file'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setLessonResourceUploadMode('url'); setLessonResourceFile(null); }}
+                    className={`flex-1 py-2 text-sm font-medium transition border-l ${
+                      lessonResourceUploadMode === 'url'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Paste URL
+                  </button>
+                </div>
+              </div>
+
+              {lessonResourceUploadMode === 'file' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Choose File *
+                  </label>
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition ${
+                      lessonResourceFile ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
+                    }`}
+                  >
+                    {lessonResourceFile ? (
+                      <div className="space-y-2">
+                        <svg className="w-8 h-8 text-blue-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm font-medium text-gray-800">{lessonResourceFile.name}</p>
+                        <p className="text-xs text-gray-500">{(lessonResourceFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLessonResourceFile(null);
+                            if (lessonResourceFileRef.current) lessonResourceFileRef.current.value = '';
+                          }}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <label htmlFor="lesson-resource-file" className="cursor-pointer">
+                        <svg className="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span className="text-blue-600 font-medium hover:text-blue-700">Click to upload</span>
+                        <span className="text-gray-500"> or drag and drop</span>
+                        <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, PPT, images, videos — up to 50 MB</p>
+                      </label>
+                    )}
+                    <input
+                      id="lesson-resource-file"
+                      ref={lessonResourceFileRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*,video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 50 * 1024 * 1024) {
+                          alert('File must be smaller than 50 MB.');
+                          return;
+                        }
+                        setLessonResourceFile(file);
+                      }}
+                    />
+                  </div>
+                  {/* hidden file_url field so form validation still passes */}
+                  <input type="hidden" name="file_url" value=" " />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">File URL *</label>
+                  <input
+                    type="url"
+                    name="file_url"
+                    required
+                    className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://..."
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  type="submit"
+                  disabled={uploadingLessonResource || (lessonResourceUploadMode === 'file' && !lessonResourceFile)}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {uploadingLessonResource ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Uploading…
+                    </>
+                  ) : 'Add Resource'}
                 </button>
-                <button type="button" onClick={() => setShowAddResource(false)} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md font-semibold hover:bg-gray-300">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddResource(false);
+                    setLessonResourceFile(null);
+                    setLessonResourceUploadMode('file');
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md font-semibold hover:bg-gray-300"
+                >
                   Cancel
                 </button>
               </div>
@@ -1285,6 +1510,197 @@ export default function CourseEditorPage({ params }: { params: Promise<{ id: str
           onSubmit={addCourseQuiz}
           onCancel={() => setShowAddCourseQuiz(false)}
         />
+      )}
+
+      {/* Add Course Resource Modal */}
+      {showAddCourseResource && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Add Course Resource</h2>
+                <button
+                  onClick={() => {
+                    setShowAddCourseResource(false);
+                    setCourseResourceFile(null);
+                    setCourseResourceForm({ title: '', description: '', resource_type: 'pdf', resource_url: '', is_downloadable: true });
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <form onSubmit={addCourseResource} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={courseResourceForm.title}
+                  onChange={(e) => setCourseResourceForm({ ...courseResourceForm, title: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Course Handbook"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+                <input
+                  type="text"
+                  value={courseResourceForm.description}
+                  onChange={(e) => setCourseResourceForm({ ...courseResourceForm, description: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="Brief description of this resource"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Resource Type *</label>
+                <select
+                  value={courseResourceForm.resource_type}
+                  onChange={(e) => {
+                    setCourseResourceForm({ ...courseResourceForm, resource_type: e.target.value as any, resource_url: '' });
+                    setCourseResourceFile(null);
+                    if (courseResourceFileRef.current) courseResourceFileRef.current.value = '';
+                  }}
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="pdf">PDF</option>
+                  <option value="document">Document (Word, Excel, PPT)</option>
+                  <option value="other">Image</option>
+                  <option value="video">Video (URL)</option>
+                  <option value="link">Link (URL)</option>
+                </select>
+              </div>
+
+              {/* File upload for non-URL types */}
+              {courseResourceForm.resource_type !== 'video' && courseResourceForm.resource_type !== 'link' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload File *</label>
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition ${
+                      courseResourceFile ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
+                    }`}
+                  >
+                    {courseResourceFile ? (
+                      <div className="space-y-2">
+                        <svg className="w-8 h-8 text-blue-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm font-medium text-gray-800 break-all">{courseResourceFile.name}</p>
+                        <p className="text-xs text-gray-500">{(courseResourceFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCourseResourceFile(null);
+                            if (courseResourceFileRef.current) courseResourceFileRef.current.value = '';
+                          }}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <label htmlFor="course-resource-file" className="cursor-pointer">
+                        <svg className="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span className="text-blue-600 font-medium hover:text-blue-700">Click to upload</span>
+                        <span className="text-gray-500"> or drag and drop</span>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {courseResourceForm.resource_type === 'pdf' && 'PDF files — up to 50 MB'}
+                          {courseResourceForm.resource_type === 'document' && 'DOC, DOCX, XLS, XLSX, PPT, PPTX — up to 50 MB'}
+                          {courseResourceForm.resource_type === 'other' && 'PNG, JPG, GIF, WebP — up to 10 MB'}
+                        </p>
+                      </label>
+                    )}
+                    <input
+                      id="course-resource-file"
+                      ref={courseResourceFileRef}
+                      type="file"
+                      className="hidden"
+                      accept={
+                        courseResourceForm.resource_type === 'pdf' ? '.pdf' :
+                        courseResourceForm.resource_type === 'document' ? '.doc,.docx,.xls,.xlsx,.ppt,.pptx' :
+                        'image/*'
+                      }
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const maxMB = courseResourceForm.resource_type === 'other' ? 10 : 50;
+                        if (file.size > maxMB * 1024 * 1024) {
+                          alert(`File must be smaller than ${maxMB} MB.`);
+                          return;
+                        }
+                        setCourseResourceFile(file);
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {courseResourceForm.resource_type === 'video' ? 'Video URL *' : 'Link URL *'}
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={courseResourceForm.resource_url}
+                    onChange={(e) => setCourseResourceForm({ ...courseResourceForm, resource_url: e.target.value })}
+                    className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder={courseResourceForm.resource_type === 'video' ? 'https://youtube.com/watch?v=...' : 'https://...'}
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input
+                  id="is_downloadable"
+                  type="checkbox"
+                  checked={courseResourceForm.is_downloadable}
+                  onChange={(e) => setCourseResourceForm({ ...courseResourceForm, is_downloadable: e.target.checked })}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="is_downloadable" className="text-sm text-gray-700">Allow students to download this resource</label>
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  type="submit"
+                  disabled={
+                    uploadingCourseResource ||
+                    !courseResourceForm.title ||
+                    (courseResourceForm.resource_type !== 'video' && courseResourceForm.resource_type !== 'link' && !courseResourceFile) ||
+                    ((courseResourceForm.resource_type === 'video' || courseResourceForm.resource_type === 'link') && !courseResourceForm.resource_url)
+                  }
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {uploadingCourseResource ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Uploading…
+                    </>
+                  ) : 'Add Resource'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddCourseResource(false);
+                    setCourseResourceFile(null);
+                    setCourseResourceForm({ title: '', description: '', resource_type: 'pdf', resource_url: '', is_downloadable: true });
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md font-semibold hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -201,6 +201,26 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
             )}
           </div>
 
+          {/* Course Objectives / Learning Outcomes */}
+          {course.learning_outcomes && course.learning_outcomes.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+              <h2 className="text-2xl font-bold mb-2">Course Objectives</h2>
+              <p className="text-gray-500 text-sm mb-6">What you will learn and be able to do by the end of this course</p>
+              <ul className="grid md:grid-cols-2 gap-3">
+                {course.learning_outcomes.map((outcome: string, i: number) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span className="text-gray-700 text-sm leading-relaxed">{outcome}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* What You'll Learn */}
           <div className="bg-white rounded-lg shadow-md p-8 mb-8">
             <h2 className="text-2xl font-bold mb-6">What's Included</h2>
