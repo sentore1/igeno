@@ -15,16 +15,22 @@ function SignInForm() {
   const searchParams = useSearchParams();
   const supabase = createBrowserClient();
 
-  // Check for URL parameters (error or success messages)
+  // Check for URL parameters (error, success messages, or intent)
   useEffect(() => {
     const errorParam = searchParams.get('error');
     const successParam = searchParams.get('success');
+    const intentParam = searchParams.get('intent');
     
     if (errorParam) {
       setError(decodeURIComponent(errorParam));
     }
     if (successParam) {
       setSuccess(decodeURIComponent(successParam));
+    }
+    if (intentParam === 'caregiver') {
+      setSuccess('Please sign in or create a caregiver account to enroll in courses.');
+    } else if (intentParam === 'client') {
+      setSuccess('Please sign in or create an account to book care services.');
     }
   }, [searchParams]);
 
@@ -106,7 +112,16 @@ function SignInForm() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link 
+              href={
+                searchParams.get('intent') === 'caregiver' 
+                  ? '/auth/signup?intent=caregiver' 
+                  : searchParams.get('intent') === 'client'
+                  ? '/auth/signup?intent=client'
+                  : '/auth/signup'
+              } 
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
               create a new account
             </Link>
           </p>

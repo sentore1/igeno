@@ -244,6 +244,62 @@ export default function UsersManagement() {
     }
   };
 
+  const handleApproveCaregiver = async (userId: string, userName: string) => {
+    if (!confirm(`Approve caregiver account for "${userName}"?`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_approved: true,
+          approved_by: session?.user.id,
+          approved_at: new Date().toISOString(),
+          rejection_reason: null,
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      await loadUsers();
+      alert(`Caregiver "${userName}" approved successfully!`);
+    } catch (error: any) {
+      alert(`Failed to approve caregiver: ${error.message}`);
+    }
+  };
+
+  const handleRejectCaregiver = async (userId: string, userName: string) => {
+    const reason = prompt(`Reject caregiver account for "${userName}"?\n\nPlease provide a reason:`);
+    
+    if (!reason) {
+      return; // User cancelled
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_approved: false,
+          approved_by: session?.user.id,
+          approved_at: new Date().toISOString(),
+          rejection_reason: reason,
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      await loadUsers();
+      alert(`Caregiver "${userName}" rejected.`);
+    } catch (error: any) {
+      alert(`Failed to reject caregiver: ${error.message}`);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -338,6 +394,9 @@ export default function UsersManagement() {
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Joined
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -366,6 +425,26 @@ export default function UsersManagement() {
                         {user.role}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.role === 'caregiver' && (
+                        user.is_approved ? (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            ✓ Approved
+                          </span>
+                        ) : user.rejection_reason ? (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            ✗ Rejected
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            ⏱ Pending
+                          </span>
+                        )
+                      )}
+                      {user.role !== 'caregiver' && (
+                        <span className="text-xs text-gray-500">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
@@ -382,6 +461,30 @@ export default function UsersManagement() {
                       >
                         Edit
                       </button>
+                      {user.role === 'caregiver' && !user.is_approved && !user.rejection_reason && (
+                        <>
+                          <button
+                            onClick={() => handleApproveCaregiver(user.id, user.full_name)}
+                            className="text-green-600 hover:text-green-900 mr-4"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectCaregiver(user.id, user.full_name)}
+                            className="text-red-600 hover:text-red-900 mr-4"
+                          >
+                            ✗ Reject
+                          </button>
+                        </>
+                      )}
+                      {user.role === 'caregiver' && user.rejection_reason && (
+                        <button
+                          onClick={() => handleApproveCaregiver(user.id, user.full_name)}
+                          className="text-green-600 hover:text-green-900 mr-4"
+                        >
+                          ✓ Approve
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteUser(user.id, user.full_name)}
                         className="text-red-600 hover:text-red-900"

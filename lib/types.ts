@@ -151,5 +151,9 @@ export interface User {
   role: UserRole;
   phone?: string;
   avatar_url?: string;
+  is_approved?: boolean;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
   created_at: string;
 }

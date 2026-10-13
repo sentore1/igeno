@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@/lib/supabase-client';
 import { UserRole } from '@/lib/types';
 
-export default function SignUp() {
+function SignUpForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -15,7 +15,18 @@ export default function SignUp() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createBrowserClient();
+
+  // Check if user is being redirected from course enrollment or care booking
+  useEffect(() => {
+    const intentParam = searchParams.get('intent');
+    if (intentParam === 'caregiver') {
+      setRole('caregiver');
+    } else if (intentParam === 'client') {
+      setRole('client');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,16 +50,32 @@ export default function SignUp() {
 
       if (authError) throw authError;
 
-      // Check if email confirmation is required
-      if (authData.user && !authData.session) {
-        setSuccess('Account created! Please check your email to confirm your account before signing in.');
-      } else {
-        // User is automatically signed in (email confirmation disabled)
-        setSuccess('Account created successfully! Redirecting...');
+      // Check if user was created and has a session (auto-confirmed)
+      if (authData.user && authData.session) {
+        // User is automatically signed in (email confirmation disabled in Supabase)
+        if (role === 'caregiver') {
+          setSuccess('Caregiver account created successfully! Note: Your account needs admin approval before you can enroll in courses. Redirecting...');
+        } else if (role === 'client') {
+          setSuccess('Client account created successfully! You can now book care services. Redirecting...');
+        } else {
+          setSuccess('Account created successfully! Redirecting...');
+        }
         setTimeout(() => {
           router.push('/dashboard');
           router.refresh();
-        }, 1500);
+        }, 2000);
+      } else if (authData.user && !authData.session) {
+        // Email confirmation is required
+        if (role === 'caregiver') {
+          setSuccess('Caregiver account created! Please check your email to confirm your account. Note: Your account will need admin approval before you can enroll in courses.');
+        } else if (role === 'client') {
+          setSuccess('Client account created! Please check your email to confirm your account before booking services.');
+        } else {
+          setSuccess('Account created! Please check your email to confirm your account before signing in.');
+        }
+      } else {
+        // Unexpected case
+        setSuccess('Account created! Please try signing in.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to sign up');
@@ -64,6 +91,16 @@ export default function SignUp() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
+          {role === 'caregiver' && (
+            <p className="mt-2 text-center text-sm text-blue-600 font-medium">
+              Creating a Caregiver account - Requires admin approval
+            </p>
+          )}
+          {role === 'client' && (
+            <p className="mt-2 text-center text-sm text-green-600 font-medium">
+              Creating a Client account for care services
+            </p>
+          )}
           <p className="mt-2 text-center text-sm text-gray-600">
             Already have an account?{' '}
             <Link href="/auth/signin" className="font-medium text-blue-600 hover:text-blue-500">
@@ -78,8 +115,8 @@ export default function SignUp() {
             </div>
           )}
           {success && (
-            <div className="rounded-md bg-green-50 p-4">
-              <div className="text-sm text-green-800">{success}</div>
+            <div className={`rounded-md p-4 ${role === 'caregiver' ? 'bg-purple-600' : 'bg-green-50'}`}>
+              <div className={`text-sm font-medium ${role === 'caregiver' ? 'text-white' : 'text-green-800'}`}>{success}</div>
             </div>
           )}
           <div className="space-y-4">
@@ -131,27 +168,8 @@ export default function SignUp() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                I am a...
-              </label>
-              <select
-                id="role"
-                name="role"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-              >
-                <option value="client">Client (Care Services)</option>
-                <option value="caregiver">Caregiver</option>
-                <option value="nurse">Nurse</option>
-                <option value="consultant">Consultant</option>
-                <option value="student">Student (Academy)</option>
-                <option value="trainer">Trainer/Instructor</option>
-                <option value="admin">Administrator</option>
-              </select>
-            </div>
+            {/* Role is automatically set based on intent parameter */}
+            <input type="hidden" name="role" value={role} />
           </div>
 
           <div>
@@ -166,5 +184,17 @@ export default function SignUp() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SignUp() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <SignUpForm />
+    </Suspense>
   );
 }
