@@ -39,7 +39,7 @@ ORDER BY created_at DESC;
 -- Confirm ALL unconfirmed users (DEVELOPMENT ONLY!)
 -- ============================================
 
--- ⚠️ WARNING: Only use this in development!
+--  WARNING: Only use this in development!
 -- Never run this in production!
 
 -- UPDATE auth.users

@@ -170,7 +170,7 @@ SET email_confirmed_at = NOW()
 WHERE email_confirmed_at IS NULL;
 ```
 
-⚠️ **Warning**: Only use this in development. Always require email confirmation in production!
+ **Warning**: Only use this in development. Always require email confirmation in production!
 
 ## Production Checklist
 

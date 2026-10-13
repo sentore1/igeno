@@ -17,8 +17,8 @@ This document covers all solutions for adding users to your system, including ha
 4. Click **"Create User"**
 
 **Limitations:**
-- ⚠️ Rate limited (3-4 users per hour)
-- ⚠️ Sends confirmation emails
+-  Rate limited (3-4 users per hour)
+-  Sends confirmation emails
 
 ---
 
@@ -82,8 +82,8 @@ This document covers all solutions for adding users to your system, including ha
 4. Admin UI now works without limits
 
 **Considerations:**
-- ⚠️ Security implications
-- ⚠️ All signups auto-confirmed
+-  Security implications
+-  All signups auto-confirmed
 - ✅ Good for internal tools
 - ✅ Can re-enable later
 

@@ -53,7 +53,7 @@ User clicks → Account active → Can login
 ✅ Generates random password
 ✅ Sends email automatically  
 ✅ User gets instructions
-⚠️ Rate limited (3-4/hour)
+ Rate limited (3-4/hour)
 ```
 
 ### Method 2: SQL Script (No Email)
@@ -62,7 +62,7 @@ User clicks → Account active → Can login
 ✅ Shows password in results
 ✅ No rate limits
 ✅ Bulk creation
-⚠️ Manual password sharing
+ Manual password sharing
 ```
 
 ---

@@ -27,8 +27,8 @@ The system now generates **unique random passwords** for each user and sends the
 - ✅ User-friendly process
 
 **Limitations:**
-- ⚠️ Rate limited (3-4 users per hour on free tier)
-- ⚠️ Requires Supabase email service working
+-  Rate limited (3-4 users per hour on free tier)
+-  Requires Supabase email service working
 
 ---
 
@@ -181,7 +181,7 @@ User changes password
 - ✅ Users receive confirmation email
 - ✅ Must click link to activate
 - ✅ More secure
-- ⚠️ Rate limited
+-  Rate limited
 
 **Best for:**
 - Production environments
@@ -195,7 +195,7 @@ User changes password
 - ✅ No confirmation needed
 - ✅ Immediate access
 - ✅ No rate limits on UI
-- ⚠️ Less secure
+-  Less secure
 
 **Best for:**
 - Development/testing

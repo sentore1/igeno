@@ -98,6 +98,13 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
 
   useEffect(() => {
     if (!activeLesson) return;
+    
+    // Reset quiz state when switching lessons
+    setActiveQuiz(null);
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    setQuizScore(null);
+    
     Promise.all([
       supabase.from('resources').select('*').eq('lesson_id', activeLesson.id),
       // TODO: Add .order('order_index', { ascending: true }) after running scripts/add-order-index-to-quizzes.sql
@@ -118,15 +125,38 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
     setEnrollment({ ...enrollment, progress: newProgress });
   };
 
+  /** Check if current lesson's quizzes are all passed */
+  const canMoveToNextLesson = (): boolean => {
+    // Get all quiz IDs for the current lesson
+    const currentLessonQuizIds = lessonQuizzes.map((q: any) => q.id);
+    
+    // If no quizzes in this lesson, allow navigation
+    if (currentLessonQuizIds.length === 0) return true;
+    
+    // Check if all quizzes are passed
+    return currentLessonQuizIds.every((qid: string) => passedQuizIds.has(qid));
+  };
+
   /** Returns a list of unmet requirements, empty array means eligible */
   const getCompletionBlockers = (): string[] => {
     const blockers: string[] = [];
+    
+    const currentLessonIndex = lessons.findIndex(l => l.id === activeLesson?.id);
 
-    // Check all lessons completed
-    const allLessonsDone = lessons.every((_, i) => completedLessonIndices.has(i));
+    // Check all lessons completed (including current lesson if on last one)
+    const allLessonsDone = lessons.every((_, i) => {
+      // If we're on the last lesson and checking completion, consider it as viewable/complete
+      if (currentLessonIndex === lessons.length - 1 && i === currentLessonIndex) {
+        return true; // Current (last) lesson counts as complete when viewing it
+      }
+      return completedLessonIndices.has(i);
+    });
+    
     if (!allLessonsDone) {
-      const remaining = lessons.length - completedLessonIndices.size;
-      blockers.push(`${remaining} lesson${remaining > 1 ? 's' : ''} not yet completed`);
+      const remaining = lessons.length - completedLessonIndices.size - (currentLessonIndex === lessons.length - 1 ? 1 : 0);
+      if (remaining > 0) {
+        blockers.push(`${remaining} lesson${remaining > 1 ? 's' : ''} not yet completed`);
+      }
     }
 
     // Check all required quizzes passed
@@ -602,38 +632,70 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
 
-            {/* Prev / Next */}
-            <div className="flex flex-col gap-3 pt-2">
-              <div className="flex justify-between gap-2">
-                <button
-                  onClick={() => activeIdx > 0 && setActiveLesson(lessons[activeIdx - 1])}
-                  disabled={activeIdx === 0}
-                  className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  ← Previous
-                </button>
-                {activeIdx < lessons.length - 1 ? (
+            {/* Prev / Next - Hide when taking a quiz */}
+            {!activeQuiz && (
+              <div className="flex flex-col gap-3 pt-2">
+                {/* Show warning if lesson quizzes not passed */}
+                {lessonQuizzes.length > 0 && !canMoveToNextLesson() && activeIdx < lessons.length - 1 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-yellow-800 mb-1">
+                      ⚠️ Complete all lesson quizzes to continue
+                    </p>
+                    <p className="text-xs text-yellow-700">
+                      You must pass {lessonQuizzes.filter((q: any) => !passedQuizIds.has(q.id)).length} quiz{lessonQuizzes.filter((q: any) => !passedQuizIds.has(q.id)).length > 1 ? 'zes' : ''} before moving to the next lesson.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex justify-between gap-2">
                   <button
-                    onClick={() => {
-                      updateProgress(activeIdx);
-                      setActiveLesson(lessons[activeIdx + 1]);
-                    }}
-                    className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"
+                    onClick={() => activeIdx > 0 && setActiveLesson(lessons[activeIdx - 1])}
+                    disabled={activeIdx === 0}
+                    className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Next →
+                    ← Previous
                   </button>
-                ) : (
+                  {activeIdx < lessons.length - 1 ? (
+                    <button
+                      onClick={() => {
+                        if (!canMoveToNextLesson()) return;
+                        updateProgress(activeIdx);
+                        setActiveLesson(lessons[activeIdx + 1]);
+                      }}
+                      disabled={!canMoveToNextLesson()}
+                      title={!canMoveToNextLesson() ? 'Complete all lesson quizzes to continue' : 'Move to next lesson'}
+                      className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next →
+                    </button>
+                  ) : (
                   <button
                     onClick={async () => {
                       if (completionBlockers.length > 0) return; // guard — button disabled anyway
-                      await updateProgress(activeIdx);
-                      const completedAt = new Date().toISOString();
-                      await supabase.from('enrollments').update({
-                        completed: true,
-                        completed_at: completedAt,
-                        progress: 100,
-                      }).eq('id', enrollment.id);
-                      router.push(`/academy/certificates/${id}`);
+                      try {
+                        await updateProgress(activeIdx);
+                        const completedAt = new Date().toISOString();
+                        
+                        // Update enrollment to completed
+                        const { error } = await supabase.from('enrollments').update({
+                          status: 'completed',
+                          completed_at: completedAt,
+                          progress: 100,
+                          completed: true, // Optional field, will be ignored if column doesn't exist
+                        }).eq('id', enrollment.id);
+
+                        if (error) {
+                          console.error('Error completing course:', error);
+                          alert('Failed to submit course. Please try again.');
+                          return;
+                        }
+
+                        // Redirect to certificate page
+                        router.push(`/academy/certificates/${id}`);
+                      } catch (error) {
+                        console.error('Unexpected error:', error);
+                        alert('An error occurred. Please try again.');
+                      }
                     }}
                     disabled={completionBlockers.length > 0}
                     title={completionBlockers.length > 0 ? completionBlockers.join(' • ') : 'Submit and get your certificate'}
@@ -646,14 +708,14 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
 
               {/* Show blockers when on last lesson */}
               {activeIdx === lessons.length - 1 && completionBlockers.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-yellow-800 mb-2">
+                <div className="bg-red-600 border border-red-700 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-white mb-2">
                     Complete the following before submitting:
                   </p>
                   <ul className="space-y-1">
                     {completionBlockers.map((b, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-yellow-700">
-                        <span className="text-yellow-500">⚠</span>
+                      <li key={i} className="flex items-center gap-2 text-sm text-white">
+                        <span className="text-white">•</span>
                         {b}
                       </li>
                     ))}
@@ -661,6 +723,7 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
       </main>

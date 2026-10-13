@@ -101,7 +101,7 @@ The caregiver registration system now allows admins to create full login account
 ### 2. Account Creation Notice
 ```tsx
 ┌──────────────────────────────────────────────┐
-│ ⚠ Account Creation Notice                   │
+│  Account Creation Notice                   │
 │                                              │
 │ This will create a full login account for   │
 │ the caregiver with access to their          │
@@ -132,7 +132,7 @@ The caregiver registration system now allows admins to create full login account
 │ The PIN has been sent to the caregiver's    │
 │ email address.                              │
 │                                              │
-│ ⚠ Important: The caregiver can login at     │
+│  Important: The caregiver can login at     │
 │ the signin page using their email and PIN.  │
 │ They should change their PIN after first    │
 │ login for security.                         │

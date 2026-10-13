@@ -100,7 +100,7 @@ Legend:
 **What you see:**
 ```
 ┌─────────────────────────────────┐
-│ ⚠️  Confirm Delete              │
+│   Confirm Delete              │
 ├─────────────────────────────────┤
 │ Are you sure you want to delete │
 │ user "John Doe"?                │
@@ -116,7 +116,7 @@ Legend:
 - Cleaning up duplicate accounts
 - Removing inactive users
 
-**⚠️ Warning:**
+** Warning:**
 - Action is permanent
 - Profile data will be lost
 - User cannot log in after deletion
@@ -141,7 +141,7 @@ Legend:
 │ Role: [▼ Student          ] *   │
 │ Phone: [                  ]     │
 ├─────────────────────────────────┤
-│ ⚠️ Note: User will be created   │
+│  Note: User will be created   │
 │ with password: TempPass123!     │
 │ Ask them to reset on first login│
 ├─────────────────────────────────┤

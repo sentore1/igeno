@@ -28,13 +28,13 @@ Admins have two options when creating caregiver accounts:
 - ✅ PIN is automatically sent to caregiver's email
 - ✅ Caregiver receives credentials immediately
 - ✅ More secure - no manual sharing needed
-- ⚠️ Requires email service configuration
+-  Requires email service configuration
 
 **Option 2: Manual PIN Delivery**
 - ✅ Admin receives PIN in a modal window
 - ✅ Admin can copy PIN to clipboard
 - ✅ Admin shares PIN with caregiver directly
-- ⚠️ Admin must note down PIN before closing modal
+-  Admin must note down PIN before closing modal
 
 ### ✅ Login Flow for Caregivers
 
@@ -99,7 +99,7 @@ After creating a caregiver, you'll see a success modal with:
 │  Email: jane.doe@example.com        │
 │  Login PIN: 123456          [Copy]  │
 ├─────────────────────────────────────┤
-│  📧 Email Sent / ⚠️ Manual Required │
+│  📧 Email Sent /  Manual Required │
 └─────────────────────────────────────┘
 ```
 

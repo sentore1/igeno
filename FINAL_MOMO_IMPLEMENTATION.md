@@ -159,7 +159,7 @@ USSD: *182*8*1*123456*5000#  (MoMo code only)
 
 ```
 ┌──────────────────────────────────────────┐
-│ ⚠️ Choose Payment Method                 │
+│  Choose Payment Method                 │
 │                                          │
 │ Select ONE method below.                 │
 │ If both provided, MoMo Code will be used│
