@@ -83,7 +83,20 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   const handleEnroll = async () => {
     if (!user) {
-      router.push('/auth/signin');
+      // Redirect to signin with caregiver intent
+      router.push('/auth/signin?intent=caregiver');
+      return;
+    }
+
+    // Check if user is approved (especially for caregivers)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, is_approved')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role === 'caregiver' && !profile.is_approved) {
+      alert('Your caregiver account is pending admin approval. You will be notified once your account is approved and you can enroll in courses.');
       return;
     }
 

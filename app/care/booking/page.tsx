@@ -85,7 +85,8 @@ export default function BookingPage() {
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      router.push('/auth/signin');
+      // Redirect to signin with client intent for booking services
+      router.push('/auth/signin?intent=client');
       return;
     }
 

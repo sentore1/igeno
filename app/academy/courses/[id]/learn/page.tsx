@@ -33,7 +33,11 @@ export default function LearnPage({ params }: { params: Promise<{ id: string }> 
 
   const init = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { router.push('/auth/signin'); return; }
+    if (!session) { 
+      // Redirect to signin with caregiver intent
+      router.push('/auth/signin?intent=caregiver'); 
+      return; 
+    }
 
     const { data: enroll } = await supabase
       .from('enrollments').select('*')
