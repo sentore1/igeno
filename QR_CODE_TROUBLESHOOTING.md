@@ -57,7 +57,7 @@ When you click "Enroll Now" on a paid course:
 3. Either:
    - ✅ QR Code appears (48x48 image)
    - ⏳ "Generating QR code..." placeholder
-   - ⚠️ "Mobile Money Not Configured" warning
+   -  "Mobile Money Not Configured" warning
 
 **Should NOT see:**
 - Empty space where QR code should be

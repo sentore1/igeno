@@ -177,7 +177,7 @@ export default function UsersManagement() {
         closeModal();
         
         // Show success with the generated password (in case email doesn't arrive)
-        alert(`User created successfully!\n\n✅ Confirmation email sent to: ${formData.email}\n\n📧 The user will receive:\n- Confirmation email with link\n- Instructions to set their password\n\n⚠️ Backup credentials (if email fails):\nEmail: ${formData.email}\nTemporary Password: ${randomPassword}\n\nThe user should check their email and follow the confirmation link.`);
+        alert(`User created successfully!\n\n✅ Confirmation email sent to: ${formData.email}\n\n📧 The user will receive:\n- Confirmation email with link\n- Instructions to set their password\n\n Backup credentials (if email fails):\nEmail: ${formData.email}\nTemporary Password: ${randomPassword}\n\nThe user should check their email and follow the confirmation link.`);
       }
     } catch (error: any) {
       setFormError(error.message || 'Failed to create user');
@@ -673,7 +673,7 @@ export default function UsersManagement() {
                           4. They can then login and set their own password
                           <br />
                           <br />
-                          <strong>⚠️ Backup:</strong> A temporary password will be shown after creation (in case email doesn't arrive)
+                          <strong> Backup:</strong> A temporary password will be shown after creation (in case email doesn't arrive)
                         </p>
                       </div>
                     )}

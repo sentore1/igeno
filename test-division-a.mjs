@@ -78,7 +78,7 @@ async function testCaregiversTable() {
         console.log(`   👤 ${c.full_name} - ${c.specialization || 'General'} (⭐ ${c.rating})`);
       });
     } else {
-      console.log('   ⚠️  No caregivers found - admins should add caregivers');
+      console.log('     No caregivers found - admins should add caregivers');
     }
     console.log('');
     return true;
@@ -130,7 +130,7 @@ async function testCaregiverAssignment() {
       .limit(1);
     
     if (!caregivers || caregivers.length === 0) {
-      console.log('   ⚠️  No caregivers available for assignment test');
+      console.log('     No caregivers available for assignment test');
       console.log('');
       return true;
     }
@@ -197,7 +197,7 @@ async function runTests() {
     console.log('3. Go to /dashboard/admin/bookings');
     console.log('4. Try assigning a caregiver to a booking\n');
   } else {
-    console.log('⚠️  Some tests failed. Check the errors above.\n');
+    console.log('  Some tests failed. Check the errors above.\n');
   }
 }
 

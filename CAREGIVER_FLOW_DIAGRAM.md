@@ -71,7 +71,7 @@
 │  │ Email: jane.smith@example.com                                 │ │
 │  │ Login PIN: 123456                               [Copy]        │ │
 │  │                                                               │ │
-│  │ 📧 Status: Email Sent / ⚠️ Manual Delivery Required           │ │
+│  │ 📧 Status: Email Sent /  Manual Delivery Required           │ │
 │  │                                                               │ │
 │  │                         [Close]                               │ │
 │  └───────────────────────────────────────────────────────────────┘ │
@@ -318,7 +318,7 @@ Caregiver Login Request
 │  Admin Modal Display                                        │
 │  ───────────────────────────────────────────────────────    │
 │  ┌───────────────────────────────────────────────────────┐ │
-│  │ ⚠️ Manual Delivery Required                           │ │
+│  │  Manual Delivery Required                           │ │
 │  │                                                       │ │
 │  │ Please provide these credentials to the caregiver     │ │
 │  │ securely. Make sure to copy the PIN before closing.   │ │

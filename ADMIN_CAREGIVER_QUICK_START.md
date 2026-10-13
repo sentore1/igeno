@@ -48,7 +48,7 @@
 └─────────────────────────────────┘
 ```
 
-**⚠️ IMPORTANT:** 
+** IMPORTANT:** 
 - Copy the PIN before closing
 - Share credentials securely
 - Caregiver can login immediately
@@ -109,7 +109,7 @@ After login, caregivers have access to:
 - Verify caregiver identity before sharing
 - Keep record of PIN deliveries
 
-⚠️ **Remind Caregivers To:**
+ **Remind Caregivers To:**
 - Keep PIN confidential
 - Don't share with others
 - Store securely

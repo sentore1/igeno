@@ -42,7 +42,7 @@ You confirmed your email but still see "Email not confirmed" when signing in.
 5. Save
 6. All new users will be auto-confirmed
 
-⚠️ Re-enable this before production!
+ Re-enable this before production!
 
 ### Option C: Resend Confirmation Email
 

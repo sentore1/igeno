@@ -108,11 +108,11 @@ Real-time filtering
 
 ## Important Notes
 
-⚠️ **New User Password**: All new users get temporary password `TempPass123!` - they MUST reset it on first login
+ **New User Password**: All new users get temporary password `TempPass123!` - they MUST reset it on first login
 
-⚠️ **Email Cannot Change**: Email is locked after creation for security
+ **Email Cannot Change**: Email is locked after creation for security
 
-⚠️ **Delete is Permanent**: Deleted profiles cannot be recovered
+ **Delete is Permanent**: Deleted profiles cannot be recovered
 
 ✅ **Admin Only**: Only admin users can access this page
 

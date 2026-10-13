@@ -174,7 +174,7 @@ In your dashboard, you'll see:
    - Phone number
    - Address (if provided)
    
-   ⚠️ Special Requirements (if any):
+    Special Requirements (if any):
    - Highlighted in yellow box
    - Important notes from client
    
@@ -282,7 +282,7 @@ Lisa Brown logs in:
    📍 123 Main St, City
    
    Special Notes:
-   ⚠️ "Needs assistance with mobility. Prefer female caregiver."
+    "Needs assistance with mobility. Prefer female caregiver."
    
    🔘 [Start Service] button ready
 ```

@@ -120,7 +120,7 @@ const checkAuth = async () => {
 | nurse | ✅ Yes (own services) | ❌ No | ✅ Yes (or separate table) |
 | student | ❌ No | ❌ No | ❌ No |
 | trainer | ❌ No | ❌ No | ❌ No |
-| consultant | ⚠️ Maybe | ⚠️ Maybe | ❌ No |
+| consultant |  Maybe |  Maybe | ❌ No |
 
 ### Table Relationships
 
@@ -188,10 +188,10 @@ WHERE p.role NOT IN ('client', 'caregiver', 'nurse');
 
 Check these other pages for similar role-checking issues:
 
-### ⚠️ Caregiver Creation
+###  Caregiver Creation
 Look for automatic caregiver record creation without role checking.
 
-### ⚠️ Enrollment Creation
+###  Enrollment Creation
 Look for automatic enrollment creation without checking if user is student/trainer.
 
 ### ✅ Best Practice Pattern

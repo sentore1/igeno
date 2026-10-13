@@ -89,7 +89,7 @@ function SignInForm() {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback?next=/dashboard`,
         }
       });
 
@@ -182,14 +182,20 @@ function SignInForm() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              Forgot your password?
+            </Link>
             <button
               type="button"
               onClick={handleResendConfirmation}
               disabled={loading}
               className="text-sm text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Didn't receive confirmation email? Click here to resend
+              Resend confirmation email
             </button>
           </div>
         </form>

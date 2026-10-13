@@ -26,7 +26,7 @@ WHERE description IS NOT NULL;
 -- SET description = '<p>This is <strong>bold</strong> text and <em>italic</em> text.</p>'
 -- WHERE id = 'YOUR-COURSE-ID';
 
-SELECT '⚠️ HTML entities detected in descriptions. Please re-save courses through admin interface.' AS recommendation
+SELECT ' HTML entities detected in descriptions. Please re-save courses through admin interface.' AS recommendation
 WHERE EXISTS (
   SELECT 1 FROM courses 
   WHERE description LIKE '%&lt;%' OR description LIKE '%&gt;%' OR description LIKE '%&nbsp;%'

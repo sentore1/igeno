@@ -78,14 +78,14 @@ DROP POLICY IF EXISTS "Admins can insert service types" ON service_types;
 DROP POLICY IF EXISTS "Admins can update service types" ON service_types;
 DROP POLICY IF EXISTS "Admins can delete service types" ON service_types;
 
--- Drop table (⚠️ WARNING: Deletes all service data!)
+-- Drop table ( WARNING: Deletes all service data!)
 DROP TABLE IF EXISTS service_types CASCADE;
 ```
 
 **Step 2: Run full script**
 - Run `scripts/create-service-types-table.sql`
 
-⚠️ **Warning:** This deletes all your existing services!
+ **Warning:** This deletes all your existing services!
 
 ---
 

@@ -17,7 +17,20 @@ export default function Navigation() {
 
   useEffect(() => {
     loadUser();
-  }, []);
+
+    // Listen to auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUser();
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [pathname]); // Reload user when pathname changes
 
   const loadUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();

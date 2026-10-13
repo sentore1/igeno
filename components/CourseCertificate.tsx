@@ -80,6 +80,29 @@ export default function CourseCertificate({
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
+        ignoreElements: (element) => {
+          // Skip elements that might have problematic colors
+          return false;
+        },
+        onclone: (clonedDoc) => {
+          // Force all colors to standard RGB/HEX format in cloned document
+          const allElements = clonedDoc.getElementsByTagName('*');
+          for (let i = 0; i < allElements.length; i++) {
+            const el = allElements[i] as HTMLElement;
+            const computedStyle = window.getComputedStyle(el);
+            
+            // Replace any lab/oklch colors with fallbacks
+            if (computedStyle.color && computedStyle.color.includes('lab')) {
+              el.style.color = '#000000';
+            }
+            if (computedStyle.backgroundColor && computedStyle.backgroundColor.includes('lab')) {
+              el.style.backgroundColor = '#ffffff';
+            }
+            if (computedStyle.borderColor && computedStyle.borderColor.includes('lab')) {
+              el.style.borderColor = '#000000';
+            }
+          }
+        },
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -101,7 +124,7 @@ export default function CourseCertificate({
     <div className="space-y-6">
       {/* Load Google script font */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Roboto:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Roboto:wght@700&family=Poppins:wght@400;600&display=swap');
         @media print {
           body > *:not(#cert-print-root) { display: none !important; }
           #cert-print-root { display: block !important; }
@@ -125,31 +148,25 @@ export default function CourseCertificate({
         {/* ── Overlay content ── */}
         <div className="absolute inset-0" style={{ fontFamily: 'Georgia, serif' }}>
 
-          {/* Certificate title overlay — two lines */}
+          {/* Certificate title overlay — single line */}
           {certificateTitle && (
             <div
-              className="absolute text-center w-full"
+              className="absolute text-center"
               style={{
-                top: '6%',
-                padding: '0 35%',
-                lineHeight: 1.15,
+                top: '8%',
+                right: '10%',
+                width: '50%',
+                fontSize: 'clamp(14px, 2.8vw, 30px)',
+                fontFamily: '"Roboto", sans-serif',
+                fontWeight: '700',
+                color: '#0d0d0d',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                lineHeight: 1.3,
+                whiteSpace: 'nowrap',
               }}
             >
-              {certificateTitle.split(' ').map((word, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontSize: 'clamp(14px, 2.8vw, 32px)',
-                    fontFamily: '"Roboto", sans-serif',
-                    fontWeight: '700',
-                    color: '#0d0d0d',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {word}
-                </div>
-              ))}
+              {certificateTitle}
             </div>
           )}
 
@@ -180,13 +197,14 @@ export default function CourseCertificate({
           <div
             className="absolute text-center w-full"
             style={{
-              top: '28%',
-              fontSize: 'clamp(22px, 5vw, 58px)',
+              top: '25%',
+              fontSize: 'clamp(26px, 5.5vw, 64px)',
               fontFamily: '"Great Vibes", cursive',
               fontWeight: '400',
               color: '#0d0d0d',
               letterSpacing: '0.02em',
               lineHeight: 1.1,
+              textTransform: 'capitalize',
             }}
           >
             {studentName}
@@ -196,7 +214,7 @@ export default function CourseCertificate({
           <div
             className="absolute text-center w-full"
             style={{
-              top: '37%',
+              top: '40%',
               fontSize: 'clamp(6px, 0.95vw, 11px)',
               fontFamily: 'Arial, sans-serif',
               fontWeight: '600',
@@ -212,7 +230,7 @@ export default function CourseCertificate({
           <div
             className="absolute text-center w-full"
             style={{
-              top: '41%',
+              top: '44%',
               fontSize: 'clamp(7px, 1.1vw, 13px)',
               fontFamily: 'Arial, sans-serif',
               fontWeight: '600',
@@ -231,13 +249,14 @@ export default function CourseCertificate({
             <div
               className="absolute text-center w-full"
               style={{
-                top: '45%',
-                fontSize: 'clamp(8px, 1.2vw, 14px)',
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-                color: '#333',
+                top: '47%',
+                fontSize: 'clamp(10px, 1.6vw, 18px)',
+                fontFamily: '"Poppins", sans-serif',
+                fontStyle: 'normal',
+                fontWeight: '400',
+                color: '#1a1a1a',
                 padding: '0 15%',
-                lineHeight: 1.3,
+                lineHeight: 1.4,
               }}
             >
               {certificateSubtitle}

@@ -71,10 +71,10 @@ export default function CoursePaymentModal({
         console.log('🔄 Generating QR code for:', recipient, 'Amount:', coursePrice);
         await generateQRCode(recipient, coursePrice);
       } else {
-        console.warn('⚠️ No MoMo code or phone number in settings');
+        console.warn(' No MoMo code or phone number in settings');
       }
     } else {
-      console.warn('⚠️ No active MoMo settings found');
+      console.warn(' No active MoMo settings found');
     }
 
     // Load Bank settings
@@ -406,11 +406,11 @@ export default function CoursePaymentModal({
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Account Name:</span>{' '}
-                  {bankSettings.account_name}
+                  {bankSettings.bank_account_name}
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Account Number:</span>{' '}
-                  {bankSettings.account_number}
+                  {bankSettings.bank_account_number}
                 </p>
                 <p className="text-sm">
                   <span className="font-semibold">Amount:</span>{' '}

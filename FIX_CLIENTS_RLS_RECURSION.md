@@ -236,7 +236,7 @@ CREATE POLICY "Caregivers can view their clients" ON public.clients
   USING (public.is_caregiver_for_client(id));
 ```
 
-⚠️ Use `SECURITY DEFINER` carefully - it bypasses RLS!
+ Use `SECURITY DEFINER` carefully - it bypasses RLS!
 
 ## Files Changed
 

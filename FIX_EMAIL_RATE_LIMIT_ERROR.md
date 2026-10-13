@@ -124,7 +124,7 @@ SELECT * FROM create_user_with_profile('tom@example.com', 'Tom Jones', 'admin', 
 5. Save settings
 6. Now admin panel will work without hitting rate limits
 
-**⚠️ Warning:** This makes all signups auto-confirmed. Only do this if:
+** Warning:** This makes all signups auto-confirmed. Only do this if:
 - You control who can sign up (closed system)
 - You manually verify users
 - Your app is internal/private
@@ -139,8 +139,8 @@ SELECT * FROM create_user_with_profile('tom@example.com', 'Tom Jones', 'admin', 
 - ✅ Immediate user creation
 
 **Cons:**
-- ⚠️ Security consideration - no email verification
-- ⚠️ All signups are auto-confirmed
+-  Security consideration - no email verification
+-  All signups are auto-confirmed
 
 ---
 

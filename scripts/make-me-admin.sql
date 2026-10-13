@@ -12,10 +12,10 @@ SELECT
   full_name,
   CASE 
     WHEN role = 'admin' THEN '✅ You are already an admin!'
-    WHEN role = 'trainer' THEN '⚠️ You are a trainer, upgrading to admin...'
-    WHEN role = 'caregiver' THEN '⚠️ You are a caregiver, upgrading to admin...'
-    WHEN role = 'client' THEN '⚠️ You are a client, upgrading to admin...'
-    ELSE '⚠️ No role set, setting to admin...'
+    WHEN role = 'trainer' THEN ' You are a trainer, upgrading to admin...'
+    WHEN role = 'caregiver' THEN ' You are a caregiver, upgrading to admin...'
+    WHEN role = 'client' THEN ' You are a client, upgrading to admin...'
+    ELSE ' No role set, setting to admin...'
   END as status
 FROM profiles 
 WHERE id = auth.uid();
