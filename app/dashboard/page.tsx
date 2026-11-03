@@ -52,16 +52,17 @@ export default function Dashboard() {
         .single();
 
       if (profileError) {
-        console.error('Profile error details:', {
-          error: profileError,
-          message: profileError?.message,
-          details: profileError?.details,
-          hint: profileError?.hint,
-          code: profileError?.code,
+        // PostgrestError has non-enumerable properties — spread gives {}.
+        // Use explicit string coercion to surface the real values.
+        console.error('Profile error details:', JSON.stringify({
+          message: profileError.message,
+          details: (profileError as any).details,
+          hint: (profileError as any).hint,
+          code: (profileError as any).code,
           status,
           statusText,
-          userId: session.user.id
-        });
+          userId: session.user.id,
+        }));
         
         // Check if it's a "not found" error
         if (profileError.code === 'PGRST116' || status === 406 || !profile) {

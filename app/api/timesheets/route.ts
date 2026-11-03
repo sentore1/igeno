@@ -189,22 +189,11 @@ export async function PATCH(request: NextRequest) {
     if (client_feedback !== undefined) updateData.client_feedback = client_feedback;
     if (status !== undefined) updateData.status = status;
 
-    // If checking out, set check_out_time and calculate total_hours
+    // If checking out, set check_out_time.
+    // total_hours is a generated column in the DB — Postgres computes it
+    // automatically from check_in_time and check_out_time. Never write to it.
     if (status === 'checked-out' || status === 'submitted') {
-      const checkOutTime = new Date();
-      updateData.check_out_time = checkOutTime.toISOString();
-
-      // Fetch check_in_time to calculate hours
-      const { data: existing } = await supabase
-        .from('timesheets')
-        .select('check_in_time')
-        .eq('id', timesheet_id)
-        .single();
-
-      if (existing?.check_in_time) {
-        const diffMs = checkOutTime.getTime() - new Date(existing.check_in_time).getTime();
-        updateData.total_hours = parseFloat((diffMs / 3600000).toFixed(4));
-      }
+      updateData.check_out_time = new Date().toISOString();
     }
 
     // Update timesheet
